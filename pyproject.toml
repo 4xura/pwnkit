@@ -33,37 +33,43 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://4xura.com"
+Homepage  = "https://4xura.com"
 Repository = "https://github.com/4xura/pwnkit"
-Issues = "https://github.com/4xura/pwnkit/issues"
-Changelog = "https://github.com/4xura/pwnkit/releases"
+Issues     = "https://github.com/4xura/pwnkit/issues"
+Changelog  = "https://github.com/4xura/pwnkit/releases"
 
 [project.scripts]
 pwnkit = "pwnkit.__main__:cli"
 
-# - Hatch config
+# ---- Hatch config ----
 
-# Version comes from Git tags via hatch-vcs
+# Git-tag driven version
 [tool.hatch.version]
 source = "vcs"
 
-# Write a version file at build-time so runtime can import __version__
+# Emit _version.py so runtime `import pwnkit; pwnkit.__version__` works
 [tool.hatch.build.hooks.vcs]
 version-file = "src/pwnkit/_version.py"
 
-# Wheel target: package discovered from src/
+# *** src-layout: point wheel to the package path(s) ***
 [tool.hatch.build.targets.wheel]
-packages = ["pwnkit"]
+packages = ["src/pwnkit"]
 
-# sdist target: include these paths
+# What goes into sdist
 [tool.hatch.build.targets.sdist]
-include = ["src/**", "README.md", "LICENSE", "pyproject.toml"]
+include = [
+  "src/pwnkit/**",
+  "README.md",
+  "LICENSE",
+  "pyproject.toml",
+  "tests/**",
+]
 
-# Optional global include/exclude (keeps junk out)
+# Optional global excludes
 [tool.hatch.build]
-exclude = ["tests", "*.bak", "*.swp", ".venv", "dist", "build"]
+exclude = ["*.bak", "*.swp", ".venv", "dist", "build", ".pytest_cache", ".ruff_cache"]
 
-# - Tooling 
+# ---- Tooling ----
 [tool.ruff]
 line-length = 100
 target-version = "py38"

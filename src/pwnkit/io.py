@@ -7,7 +7,7 @@ import os
 __all__ = [
     "PwnStream",
     # optional global helpers:
-    "set_global_io", "s", "sa", "sl", "sla", "r", "ru", "uu64", "itoa",
+    "set_global_io", "s", "sa", "sl", "sla", "r", "ru", "uu64", 
 ]
 
 Chars = Union[str, bytes]

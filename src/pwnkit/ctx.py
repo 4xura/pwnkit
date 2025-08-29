@@ -1,6 +1,6 @@
 from __future__ import annotations
-from dataclasses import dataclass, asdict
-from typing import Literal, Sequence, Dict, Iterable
+from dataclasses import dataclass, asdict, replace      
+from typing import Literal, Sequence, Dict, Iterable, ClassVar 
 from pwn import context
 
 __all__ = [
@@ -33,7 +33,7 @@ class Context:
         context.terminal = list(self.terminal)
 
     # - Presets
-    _PRESETS: Dict[str, "Context"] = {}
+    _PRESETS: ClassVar[Dict[str, "Context"]] = {}
 
     @classmethod
     def preset(cls, name: str) -> "Context":
