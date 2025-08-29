@@ -1,16 +1,16 @@
 [build-system]
-requires = ["hatchling>=1.25.0"]
+requires = ["hatchling>=1.25.0", "hatch-vcs>=0.4"]
 build-backend = "hatchling.build"
 
 [project]
 name = "pwnkit"
 dynamic = ["version"]
 description = "Axura's reusable pwn utilities, gadgets, debugging, shellcodes, templates"
-readme = "README.md, content-type = "text/markdown""
-requires-python = ">=3.8"
-license = { text = "MIT" }
+readme = "README.md"
+license = { file = "LICENSE" }
 authors = [{ name = "Axura", email = "asuraulord@gmail.com" }]
-keywords = ["pwn", "ctf", "exploit", "heap", "rop", "pwntools", "template", "stack",]
+keywords = ["pwn", "ctf", "exploit", "heap", "rop", "pwntools", "template", "stack"]
+requires-python = ">=3.8"
 dependencies = [
   "pwntools>=4.11.0",
   "typing-extensions>=4.10.0; python_version<'3.11'",
@@ -41,19 +41,29 @@ Changelog = "https://github.com/4xura/pwnkit/releases"
 [project.scripts]
 pwnkit = "pwnkit.__main__:cli"
 
-[tool.hatch.build]
-sources = ["src"]
+# - Hatch config
 
+# Version comes from Git tags via hatch-vcs
 [tool.hatch.version]
 source = "vcs"
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/pwnkit"]
-only-include = ["src/pwnkit", "LICENSE", "README.md"]
+# Write a version file at build-time so runtime can import __version__
+[tool.hatch.build.hooks.vcs]
+version-file = "src/pwnkit/_version.py"
 
+# Wheel target: package discovered from src/
+[tool.hatch.build.targets.wheel]
+packages = ["pwnkit"]
+
+# sdist target: include these paths
 [tool.hatch.build.targets.sdist]
 include = ["src/**", "README.md", "LICENSE", "pyproject.toml"]
 
+# Optional global include/exclude (keeps junk out)
+[tool.hatch.build]
+exclude = ["tests", "*.bak", "*.swp", ".venv", "dist", "build"]
+
+# - Tooling 
 [tool.ruff]
 line-length = 100
 target-version = "py38"
@@ -63,3 +73,4 @@ exclude = ["dist", ".venv"]
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
+

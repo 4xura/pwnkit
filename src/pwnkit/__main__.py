@@ -116,7 +116,15 @@ def init_args() -> Namespace:
         "-P", "--preset",
         choices=list(Context.presets()),
         default="linux-amd64-debug",
-        help="context preset; individual flags below override this"
+        help=(
+            "context preset; individual flags below override this\n"
+            "default: linux-amd64-debug\n"
+            "choices: linux-amd64-quiet\n"
+            "         linux-i386-[debug|quiet]\n"
+            "         linux-arm-[debug|quiet]\n"
+            "         linux-aarch64-[debug|quiet]\n"
+            "         freebsd-amd64-[debug|quiet]"
+        ),
     )
 
     ctx.add_argument(
