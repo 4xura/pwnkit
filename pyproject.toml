@@ -1,0 +1,65 @@
+[build-system]
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pwnkit"
+dynamic = ["version"]
+description = "Axura's reusable pwn utilities, gadgets, debugging, shellcodes, templates"
+readme = "README.md, content-type = "text/markdown""
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "Axura", email = "asuraulord@gmail.com" }]
+keywords = ["pwn", "ctf", "exploit", "heap", "rop", "pwntools", "template", "stack",]
+dependencies = [
+  "pwntools>=4.11.0",
+  "typing-extensions>=4.10.0; python_version<'3.11'",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Security",
+  "Topic :: Software Development :: Libraries",
+  "Environment :: Console",
+]
+
+[project.urls]
+Homepage = "https://4xura.com"
+Repository = "https://github.com/4xura/pwnkit"
+Issues = "https://github.com/4xura/pwnkit/issues"
+Changelog = "https://github.com/4xura/pwnkit/releases"
+
+[project.scripts]
+pwnkit = "pwnkit.__main__:cli"
+
+[tool.hatch.build]
+sources = ["src"]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pwnkit"]
+only-include = ["src/pwnkit", "LICENSE", "README.md"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/**", "README.md", "LICENSE", "pyproject.toml"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+extend-select = ["E", "F", "I", "UP"]
+exclude = ["dist", ".venv"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
