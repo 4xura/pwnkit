@@ -20,8 +20,15 @@ TEMPLATE = """#!/usr/bin/env python3
 # - Remote mode : ./xpl.py [ <IP> <PORT> | <IP:PORT> ]
 #
 
-from pwn import *
 from pwnkit import *
+from pwn import *
+import os, sys
+
+BIN_PATH   = {file_path!r}
+LIBC_PATH  = {libc_path!r}
+elf        = ELF(BIN_PATH, checksec=False)
+libc       = ELF(LIBC_PATH) if LIBC_PATH else None
+host, port = parse_argv(sys.argv[1:], {host!r}, {port!r})
 
 ctx = Context(
     arch      = {arch!r},
@@ -29,17 +36,16 @@ ctx = Context(
     endian    = {endian!r},
     log_level = {log!r},
     terminal  = {term!r}
-)
-ctx.push()
+).push()
 
 io = Tube(
-    file_path = {file_path!r},
-    libc_path = {libc_path!r},
-    host      = {host!r},
-    port      = {port!r},
+    file_path = BIN_PATH,
+    libc_path = LIBC_PATH,
+    host      = host,
+    port      = port,
     env       = {{}}
-).alias()
-# io = {io_line}
+).init().alias()
+set_global_io(io._t())  # s, sa, sl, sla, r, ru, uu64
 
 init_pr("debug", "%(asctime)s - %(levelname)s - %(message)s", "%H:%M:%S")
 

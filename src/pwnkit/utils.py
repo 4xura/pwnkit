@@ -1,14 +1,15 @@
 from __future__ import annotations
 import inspect
 from pwn import success  
-from typing import Literal
-import logging
+from typing import Literal, Optional, Tuple, Sequence
+import logging, sys
 
 __all__ = [
         "leak", "pa",
         "itoa",
         "init_pr",
         "pr_debug", "pr_info", "pr_warn", "pr_error", "pr_critical", "pr_exception",
+        "parse_argv",
         ]
 
 # Data format transform
@@ -109,4 +110,45 @@ def pr_critical(msg):
 def pr_exception(msg):
     logging.exception(msg)
 
+# Usage
+# ------------------------------------------------------------------------
+def _usage(argv: Sequence[str]) -> Tuple[None, None]:
+    prog = sys.argv[0] if sys.argv else "xpl.py"
+    print(f"Usage: {prog} [IP PORT] | [IP:PORT]\n"
+          f"Examples:\n"
+          f"  {prog}\n"
+          f"  {prog} 10.10.10.10 31337\n"
+          f"  {prog} 10.10.10.10:31337\n")
+    sys.exit(1)
+
+# Parse argv (ip, host)
+# ------------------------------------------------------------------------
+def parse_argv(argv: Sequence[str],
+				default_host: Optional[str] = None,
+				default_port: Optional[int] = None
+				) -> Tuple[Optional[str], Optional[int]]:
+    """
+    Accepts:
+      []
+      [IP PORT]
+      [IP:PORT]
+    Returns (host, port) where either may be None (local mode).
+    """
+    host, port = default_host, default_port
+    if len(argv) == 0:
+        return host, port
+
+    if len(argv) == 1 and ":" in argv[0]:
+        h, p = argv[0].split(":", 1)
+        if not h or not p.isdigit():
+            return _usage(argv)
+        return h, int(p)
+
+    if len(argv) == 2:
+        h, p = argv[0], argv[1]
+        if not p.isdigit():
+            return _usage(argv)
+        return h, int(p)
+
+    return _usage(argv)
 

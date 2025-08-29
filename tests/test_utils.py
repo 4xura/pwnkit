@@ -1,8 +1,11 @@
 import io
 import logging
 import re
+import builtins
+import types
+import sys
 import pytest
-from pwnkit.utils import leak, pa, itoa, init_pr, pr_debug, pr_info, pr_warn, pr_error, pr_critical, pr_exception
+from pwnkit.utils import leak, pa, itoa, init_pr, pr_debug, pr_info, pr_warn, pr_error, pr_critical, pr_exception, parse_argv, _usage
 
 HEX = r"0x[0-9a-fA-F]+"
 ANSI = "\x1b["
@@ -78,3 +81,69 @@ def test_pr_exception_includes_traceback(capsys):
     err = capsys.readouterr().err
     assert "oops" in err and "ValueError: boom" in err
 
+class ArgvCtx:
+    """Context manager to temporarily set sys.argv for usage banner tests."""
+    def __init__(self, argv):
+        self.argv = argv
+        self._old = None
+    def __enter__(self):
+        self._old = sys.argv
+        sys.argv = list(self.argv)
+    def __exit__(self, *exc):
+        sys.argv = self._old
+
+
+@pytest.mark.parametrize(
+    "argv,defaults,expected",
+    [
+        # no args -> defaults -> local
+        ([], ("127.0.0.1", 1337), ("127.0.0.1", 1337)),
+        ([], (None, None), (None, None)),
+
+        # IP PORT
+        (["10.10.10.10", "31337"], (None, None), ("10.10.10.10", 31337)),
+        # hostname PORT
+        (["target.host", "31337"], ("1.2.3.4", 1234), ("target.host", 31337)),
+
+        # IP:PORT
+        (["10.10.10.10:31337"], (None, None), ("10.10.10.10", 31337)),
+        # hostname:PORT
+        (["pwnd.local:9001"], ("dflt.host", 4444), ("pwnd.local", 9001)),
+    ],
+)
+def test_parse_argv_ok(argv, defaults, expected):
+    dh, dp = defaults
+    assert parse_argv(argv, dh, dp) == expected
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["10.10.10.10", "abc"],        # non-numeric port
+        ["pwnd.local:abc"],            # non-numeric port in colon form
+        ["10.10.10.10:"],              # missing port after colon
+        [":31337"],                    # missing host before colon
+        ["extra", "args", "bad"],      # too many args
+        ["10.10.10.10", "31337", "x"], # too many args even if first two valid
+        ["pwnd.local:-1"],             # negative sign -> not .isdigit()
+    ],
+)
+def test_parse_argv_usage_and_exit(argv, capsys):
+    # capture the usage banner and the SystemExit code
+    with ArgvCtx(["xpl.py"]):
+        with pytest.raises(SystemExit) as ei:
+            parse_argv(argv, "127.0.0.1", 1337)
+        assert ei.value.code == 1
+        out = capsys.readouterr().out
+        assert "Usage:" in out
+        assert "Examples:" in out
+
+
+def test_usage_direct(capsys):
+    with ArgvCtx(["xpl.py"]):
+        with pytest.raises(SystemExit) as ei:
+            _usage(["garbage"])
+        assert ei.value.code == 1
+        out = capsys.readouterr().out
+        assert "Usage: xpl.py" in out
+        assert "[IP PORT] | [IP:PORT]" in out

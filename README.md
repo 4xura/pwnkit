@@ -55,7 +55,7 @@ Example:
 ```bash
 $ pwnkit exp.py -f ./evil-corp -l ./libc.so.6 \
                 -A aarch64 -E big \
-                -i 11.22.33.44 -p 123456 \
+                -i 192.168.1.13 -p 1337 \
                 -a john.doe -b https://johndoe.com
 [+] Wrote exp.py
 
@@ -72,12 +72,19 @@ $ cat exp.py
 #
 # Usage:
 # ------
-# - Local mode  : ./xpl.py
-# - Remote mode : ./xpl.py [ <IP> <PORT> | <IP:PORT> ]
+# - Local mode  : python3 xpl.py
+# - Remote mode : python3 [ <IP> <PORT> | <IP:PORT> ]
 #
 
-from pwn import *
 from pwnkit import *
+from pwn import *
+import os, sys
+
+BIN_PATH   = '/home/Axura/ctf/pwn/linux-user/evilcorp/evil-corp'
+LIBC_PATH  = '/home/Axura/ctf/pwn/linux-user/evilcorp/libc.so.6'
+elf        = ELF(BIN_PATH, checksec=False)
+libc       = ELF(LIBC_PATH) if LIBC_PATH else None
+host, port = parse_argv(sys.argv[1:], None, None)	# default local mode 
 
 ctx = Context(
     arch      = 'aarch64',
@@ -85,17 +92,16 @@ ctx = Context(
     endian    = 'big',
     log_level = 'debug',
     terminal  = ('tmux', 'splitw', '-h')
-)
-ctx.push()
+).push()
 
 io = Tube(
-    file_path = '/home/Axura/ctf/pwn/linux-user/evilcorp/evil-corp',
-    libc_path = '/home/Axura/ctf/pwn/linux-user/evilcorp/libc.so.6',
-    host      = '11.22.33.44',
-    port      = 123456,
+    file_path = BIN_PATH,
+    libc_path = LIBC_PATH,
+    host      = host,
+    port      = port,
     env       = {}
-).alias()
-# io = remote('11.22.33.44', 123456)
+).init().alias()
+set_global_io(io._t())  # s, sa, sl, sla, r, ru, uu64
 
 init_pr("debug", "%(asctime)s - %(levelname)s - %(message)s", "%H:%M:%S")
 

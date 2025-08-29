@@ -113,7 +113,7 @@ class Tube:
             raise RuntimeError("Tube not opened.")
         return self._io
 
-    def s(self, data: bytes) -> None:
+    def s(self, data: Chars) -> None:
         assert self._aliased, "Call io.alias() to enable shortcuts."
         self._t().send(data)
 
@@ -153,11 +153,12 @@ def _io() -> tube:
     assert _global_io is not None, "Global io not set; call set_global_io(io)."
     return _global_io
 
-def s(data):   return _io().send(data)
-def sa(d, x):  return _io().sendafter(d, x)
-def sl(x):     return _io().sendline(x)
-def sla(d, x): return _io().sendlineafter(d, x)
-def r(n=4096): return _io().recv(n)
-def ru(d, drop=True): return _io().recvuntil(d, drop=drop)
-def uu64(data: bytes) -> int: return u64(data.ljust(8, b"\x00"))
+def s(x: Chars) -> None: return _io().send(x)
+def sa(d: Chars, x: Chars) -> None: return _io().sendafter(d, x)
+def sl(x: Chars) -> None: return _io().sendline(x)
+def sla(d: Chars, x: Chars) -> None: return _io().sendlineafter(d, x)
+def r(n: int = 4096) -> bytes: return _io().recv(n)
+def ru(d: Chars, drop: bool = True) -> bytes: return _io().recvuntil(d, drop=drop)
+def uu64(x: bytes) -> int: return u64(x.ljust(8, b"\x00"))
+
 
