@@ -15,11 +15,11 @@ From [PyPI](https://pypi.org/project/pwnkit/):
 
 ```bash
 pip install pwnkit
-````
+```
 
 *Method 2*. Install using `pipx` as standalone **CLI tools**:
 
-```sh
+```bash
 pipx install pwnkit
 ```
 
@@ -29,7 +29,7 @@ pipx install pwnkit
 git clone https://github.com/4xura/pwnkit.git
 cd pwnkit
 pip install -e .
-````
+```
 
 ---
 
@@ -51,12 +51,69 @@ pwnkit xpl.py --file ./pwn --host 10.10.10.10 --port 31337
 # Override default preset with individual flags
 pwnkit xpl.py -f ./pwn -i 10.10.10.10 -p 31337 -A aarch64 -E big
 ```
+Example:
+```bash
+❯ pwnkit exp.py -f evil-corp
+[+] Wrote exp.py
+
+❯ cat exp.py
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Title : Linux Pwn Exploit
+# Author: Axura (@4xura) - https://4xura.com
+#
+# Description:
+# ------------
+# A Python exploit for Linux binex interaction
+#
+# Usage:
+# ------
+# - Local mode  : ./xpl.py
+# - Remote mode : ./xpl.py [ <IP> <PORT> | <IP:PORT> ]
+#
+
+from pwn import *
+from pwnkit import *
+
+ctx = Context(
+    arch      = 'amd64',
+    os        = 'linux',
+    endian    = 'little',
+    log_level = 'debug',
+    terminal  = ('tmux', 'splitw', '-h')
+)
+ctx.push()
+
+io = Tube(
+    file_path = '/home/Axura/ctf/pwn/linux-user/evilcorp/evil-corp',
+    libc_path = None,
+    host      = None,
+    port      = None,
+    env       = {}
+).alias()
+# io = process('/home/Axura/ctf/pwn/linux-user/evilcorp/evil-corp')
+
+init_pr("debug", "%(asctime)s - %(levelname)s - %(message)s", "%H:%M:%S")
+
+def xpl():
+
+    # exploit chain here
+
+
+
+
+    io.interactive()
+
+if __name__ == "__main__":
+    xpl()
+```
 
 ### Python API
 
 ```python
-from pwnkit import PwnStream
-from pwnkit.ctx import Context
+from pwnkit import *
+from pwn import *
 
 # push a context preset
 ctx = Context.preset("linux-amd64-debug")

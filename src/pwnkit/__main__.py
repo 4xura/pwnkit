@@ -37,7 +37,7 @@ io = Tube(
     libc_path = {libc_path!r},
     host      = {host!r},
     port      = {port!r},
-    env       = {}
+    env       = {{}}
 ).alias()
 # io = {io_line}
 
@@ -77,7 +77,7 @@ def init_args() -> Namespace:
     )
 
     ap.add_argument(
-        "exp",
+        "out",
         metavar="exp.py",
         type=Path,
         help="output exploit path (e.g., xpl.py)"
@@ -216,7 +216,6 @@ def cli():
         libc_path=args.libc_path or None,
         host=args.host or None,
         port=args.port or None,
-        env={}
     )
     io_line = io.as_code()
 
