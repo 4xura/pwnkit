@@ -34,6 +34,17 @@ pip install -e .
 ```bash
 pwnkit --help
 ```
+Create an exploit script template:
+```
+# local
+pwnkit xpl.py --file ./pwn --libc ./libc.so.6 
+
+# remote
+pwnkit xpl.py --file ./pwn --host 10.10.10.10 --port 31337
+
+# Override default preset with individual flags
+pwnkit xpl.py -f ./pwn -i 10.10.10.10 -p 31337 -A aarch64 -E big
+```
 
 ### Python API
 
