@@ -55,7 +55,6 @@ Example:
 ```bash
 $ pwnkit exp.py -f ./evil-corp -l ./libc.so.6 \
                 -A aarch64 -E big \
-                -i 192.168.1.13 -p 1337 \
                 -a john.doe -b https://johndoe.com
 [+] Wrote exp.py
 
