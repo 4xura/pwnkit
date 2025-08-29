@@ -1,6 +1,7 @@
 # pwnkit
 
-Under construction, bugs not fixed
+*****Under construction, bugs not fixed**
+
 [![PyPI version](https://img.shields.io/pypi/v/pwnkit.svg)](https://pypi.org/project/pwnkit/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ---
@@ -23,7 +24,7 @@ From source (development):
 git clone https://github.com/4xura/pwnkit.git
 cd pwnkit
 pip install -e .
-```
+````
 
 ---
 
