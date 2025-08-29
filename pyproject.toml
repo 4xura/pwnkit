@@ -41,6 +41,9 @@ Changelog  = "https://github.com/4xura/pwnkit/releases"
 [project.scripts]
 pwnkit = "pwnkit.__main__:cli"
 
+[project.optional-dependencies]
+dev = ["pytest"]
+
 # ---- Hatch config ----
 
 # Git-tag driven version

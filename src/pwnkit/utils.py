@@ -53,14 +53,14 @@ class ColorFormatter(logging.Formatter):
     }
     RESET = "\033[0m"
 
-def format(self, record):
-    orig = record.levelname
-    try:
-        color = self.COLORS.get(orig, self.RESET)
-        record.levelname = f"{color}{orig}{self.RESET}"
-        return super().format(record)
-    finally:
-        record.levelname = orig
+    def format(self, record):
+        orig = record.levelname
+        try:
+            color = self.COLORS.get(orig, self.RESET)
+            record.levelname = f"{color}{orig}{self.RESET}"
+            return super().format(record)
+        finally:
+            record.levelname = orig
 
 logger = logging.getLogger("pwnkit")
 

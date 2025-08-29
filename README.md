@@ -1,6 +1,6 @@
 # pwnkit
 
-**Under construction, bugs not fixed**
+**[!] Under construction.Developing and fixing bugs**
 
 [![PyPI version](https://img.shields.io/pypi/v/pwnkit.svg)](https://pypi.org/project/pwnkit/)
 
@@ -53,15 +53,18 @@ pwnkit xpl.py -f ./pwn -i 10.10.10.10 -p 31337 -A aarch64 -E big
 ```
 Example:
 ```bash
-❯ pwnkit exp.py -f evil-corp
+$ pwnkit exp.py -f ./evil-corp -l ./libc.so.6 \
+                -A aarch64 -E big \
+                -i 11.22.33.44 -p 123456 \
+                -a john.doe -b https://johndoe.com
 [+] Wrote exp.py
 
-❯ cat exp.py
+$ cat exp.py
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # Title : Linux Pwn Exploit
-# Author: Axura (@4xura) - https://4xura.com
+# Author: john.doe - https://johndoe.com
 #
 # Description:
 # ------------
@@ -77,9 +80,9 @@ from pwn import *
 from pwnkit import *
 
 ctx = Context(
-    arch      = 'amd64',
+    arch      = 'aarch64',
     os        = 'linux',
-    endian    = 'little',
+    endian    = 'big',
     log_level = 'debug',
     terminal  = ('tmux', 'splitw', '-h')
 )
@@ -87,21 +90,18 @@ ctx.push()
 
 io = Tube(
     file_path = '/home/Axura/ctf/pwn/linux-user/evilcorp/evil-corp',
-    libc_path = None,
-    host      = None,
-    port      = None,
+    libc_path = '/home/Axura/ctf/pwn/linux-user/evilcorp/libc.so.6',
+    host      = '11.22.33.44',
+    port      = 123456,
     env       = {}
 ).alias()
-# io = process('/home/Axura/ctf/pwn/linux-user/evilcorp/evil-corp')
+# io = remote('11.22.33.44', 123456)
 
 init_pr("debug", "%(asctime)s - %(levelname)s - %(message)s", "%H:%M:%S")
 
 def xpl():
 
     # exploit chain here
-
-
-
 
     io.interactive()
 
