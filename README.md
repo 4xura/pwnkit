@@ -1,8 +1,9 @@
 # pwnkit
 
-*****Under construction, bugs not fixed**
+**Under construction, bugs not fixed**
 
 [![PyPI version](https://img.shields.io/pypi/v/pwnkit.svg)](https://pypi.org/project/pwnkit/)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ---
 
@@ -10,15 +11,19 @@
 
 From [PyPI](https://pypi.org/project/pwnkit/):
 
-```bash
-# install into your environment
-pip install pwnkit
+*Method 1*. Install into **current Python environment** (could be system-wide, venv, conda env, etc.). use it both as CLI and Python API:
 
-# or as a standalone CLI tool
-pipx install pwnkit
+```bash
+pip install pwnkit
 ````
 
-From source (development):
+*Method 2*. Install using `pipx` as standalone **CLI tools**:
+
+```sh
+pipx install pwnkit
+```
+
+*Method 3.* Install from source (dev):
 
 ```bash
 git clone https://github.com/4xura/pwnkit.git
@@ -36,11 +41,11 @@ pip install -e .
 pwnkit --help
 ```
 Create an exploit script template:
-```
-# local
+```bash
+# local pwn
 pwnkit xpl.py --file ./pwn --libc ./libc.so.6 
 
-# remote
+# remote pwn
 pwnkit xpl.py --file ./pwn --host 10.10.10.10 --port 31337
 
 # Override default preset with individual flags
@@ -53,15 +58,31 @@ pwnkit xpl.py -f ./pwn -i 10.10.10.10 -p 31337 -A aarch64 -E big
 from pwnkit import PwnStream
 from pwnkit.ctx import Context
 
-# simple I/O stream
-io = PwnStream("/bin/cat").alias()
-io.sl(b"hello")
-print(io.r(5))   # b'hello'
-io.close()
-
 # push a context preset
 ctx = Context.preset("linux-amd64-debug")
+"""
+ctx = Context(
+    arch	  = "amd64"
+    os		  = "linux"
+    endian	  = "little"
+    log_level = "debug"
+    terminal  = ("tmux", "splitw", "-h")
+)
+"""
 ctx.push()   # applies to pwntools' global context
+
+# simple I/O stream
+io = Tube(
+    file_path = "/usr/bin/sudoedit",
+    libc_path = "./libc.so.6",
+    host      = "127.0.0.1",
+    port	  = 123456,
+    env		  = {}
+).alias()
+io.sl(b"hello")
+print(io.r(5))   # b'hello'
+
+io.interactive() 
 ```
 
 ---
@@ -80,7 +101,6 @@ Available presets (built-in):
 * `linux-aarch64-quiet`
 * `freebsd-amd64-debug`
 * `freebsd-amd64-quiet`
-
 
 
 

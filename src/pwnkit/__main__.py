@@ -2,6 +2,7 @@ from __future__ import annotations
 from pathlib import Path
 from argparse import ArgumentParser, Namespace, RawTextHelpFormatter
 from pwnkit import *
+import os
 
 TEMPLATE = """#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
@@ -23,19 +24,20 @@ from pwn import *
 from pwnkit import *
 
 ctx = Context(
-    arch={arch!r},
-    os={os!r},
-    endian={endian!r},
-    log_level={log!r},
-    terminal={term!r}
+    arch      = {arch!r},
+    os        = {os!r},
+    endian    = {endian!r},
+    log_level = {log!r},
+    terminal  = {term!r}
 )
 ctx.push()
 
-io = PwnStream(
-    file_path={file_path!r},
-    libc_path={libc_path!r},
-    host={host!r},
-    port={port!r},
+io = Tube(
+    file_path = {file_path!r},
+    libc_path = {libc_path!r},
+    host      = {host!r},
+    port      = {port!r},
+    env       = {}
 ).alias()
 # io = {io_line}
 
@@ -59,7 +61,7 @@ if __name__ == "__main__":
 def init_args() -> Namespace:
     ap = ArgumentParser(
         prog="pwnkit",
-        usage="pwnkit [options] <out.py>",
+        usage="pwnkit [options] <exp.py>",
         description=(
             "Generate a clean exploit scaffold with embedded Context config.\n"
             "Examples:\n"
@@ -68,12 +70,15 @@ def init_args() -> Namespace:
             "  pwnkit xpl.py -f ./vuln -i 10.10.10.10 -p 31337 -A aarch64 -E big\n"
             "  (default context preset: Linux amd64 little debug\n)"
         ),
+        epilog=(
+            "Author: Axura (@4xura) - https://4xura.com\n"
+        ),
         formatter_class=RawTextHelpFormatter,
     )
 
     ap.add_argument(
-        "out",
-        metavar="out.py",
+        "exp",
+        metavar="exp.py",
         type=Path,
         help="output exploit path (e.g., xpl.py)"
     )
@@ -83,8 +88,8 @@ def init_args() -> Namespace:
     paths.add_argument(
         "-f", "--file", 
         dest="file_path",
-        default="./vuln",
-        metavar="bin",
+        default="",
+        metavar="target",
         help="target binary path to pwn (default: ./vuln)"
     )
     paths.add_argument(
@@ -118,12 +123,7 @@ def init_args() -> Namespace:
         default="linux-amd64-debug",
         help=(
             "context preset; individual flags below override this\n"
-            "default: linux-amd64-debug\n"
-            "choices: linux-amd64-quiet\n"
-            "         linux-i386-[debug|quiet]\n"
-            "         linux-arm-[debug|quiet]\n"
-            "         linux-aarch64-[debug|quiet]\n"
-            "         freebsd-amd64-[debug|quiet]"
+            "(default: linux-amd64-debug)"
         ),
     )
 
@@ -132,11 +132,7 @@ def init_args() -> Namespace:
         default=None,
         choices=["amd64", "i386", "arm", "aarch64"],
         help=(
-            "target architecture for pwntools context (default: amd64).\n"
-            "  amd64   → x86_64 binaries\n"
-            "  i386    → 32-bit x86 binaries\n"
-            "  arm     → 32-bit ARM\n"
-            "  aarch64 → 64-bit ARM"
+            "target architecture for pwntools context (default: amd64)"
         ),
     )
 
@@ -157,9 +153,7 @@ def init_args() -> Namespace:
         default=None,
         choices=["little", "big"],
         help=(
-            "endianness of the target (default: little)\n"
-            "little → least significant byte stored first (common on x86/ARM)\n"
-            "big    → most significant byte stored first (network packages)"
+            "endianness of the target (default: little)"
         ),
     )
 
@@ -167,9 +161,9 @@ def init_args() -> Namespace:
         "-L", "--log",
         default=None,
         metavar="log_level",
+        choices=["debug", "info", "warning", "error"],
         help=(
-            "pwntools logging level (default: \"debug\" from preset )\n"
-            "common levels: debug, info, warning, error"
+            "pwntools logging level (default: \"debug\" from preset)"
         ),
     )
 
@@ -180,10 +174,6 @@ def init_args() -> Namespace:
         metavar="cmd",
         help=(
             "terminal command to use when spawning GDB (default: tmux splitw -h).\n"
-            "examples:\n"
-            "  --term gnome-terminal -e\n"
-            "  --term konsole -e\n"
-            "  --term \"\""
         ),
     )
 
@@ -221,11 +211,12 @@ def cli():
     if args.log is not None:       ctx.log_level = args.log
     if args.term is not None:      ctx.terminal = tuple(args.term)
 
-    io = PwnStream(
-        file_path=args.file_path,
+    io = Tube(
+        file_path=args.file_path or None,
         libc_path=args.libc_path or None,
-        host=args.host,
-        port=args.port,
+        host=args.host or None,
+        port=args.port or None,
+        env={}
     )
     io_line = io.as_code()
 
@@ -235,10 +226,10 @@ def cli():
         endian=ctx.endian,
         log=ctx.log_level,
         term=tuple(ctx.terminal),
-        file_path=args.file_path,
-        libc_path=args.libc_path,
-        host=args.host,
-        port=args.port,
+        file_path=io.file_path,
+        libc_path=io.libc_path,
+        host=io.host,
+        port=io.port,
         io_line=io_line,
         author=args.author,
         blog=args.blog,

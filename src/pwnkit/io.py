@@ -5,7 +5,7 @@ from pwn import tube, u64  # type: ignore
 import os
 
 __all__ = [
-    "PwnStream",
+    "Tube",
     # optional global helpers:
     "set_global_io", "s", "sa", "sl", "sla", "r", "ru", "uu64", 
 ]
@@ -13,21 +13,21 @@ __all__ = [
 Chars = Union[str, bytes]
 
 
-# Init a PwnStream for IO (tube)
+# Init a Tube for IO stream
 # ------------------------------------------------------------------------
 @dataclass(slots=True)
-class PwnStream:
+class Tube:
     """
     Usage:
         # local
-        io = PwnStream("./vuln", libc_path="./libc.so.6").alias()
+        io = Tube("./vuln", libc_path="./libc.so.6").alias()
         io.s(b"AAAA"); io.sla(b"> ", b"1"); data = io.r(); io.interactive()
 
         # remote
-        io = PwnStream("./vuln", host="10.10.10.10", port=31337).alias()
+        io = Tube("./vuln", host="10.10.10.10", port=31337).alias()
 
         # custom env (merged with libc preload if local)
-        io = PwnStream("./vuln", env={"ASAN_OPTIONS":"detect_leaks=0"}).alias()
+        io = Tube("./vuln", env={"ASAN_OPTIONS":"detect_leaks=0"}).alias()
     """
     file_path   : str
     libc_path   : Optional[str] = None
@@ -39,13 +39,19 @@ class PwnStream:
     _io         : Optional[tube] = field(default=None, init=False, repr=False, compare=False)
     _aliased    : bool = field(default=False, init=False, repr=False, compare=False)
 
-    # - Init
-    def __post_init__(self) -> None:
-        """sanity: remote requires both host & port""" 
+    def __post_init__(self):
         if (self.host is None) ^ (self.port is None):
             raise ValueError("Both host and port must be set for remote mode.")
-        """spawn immediately (eager)""" 
+        self.file_path = os.path.abspath(self.file_path)
+        if self.libc_path:
+            self.libc_path = os.path.abspath(self.libc_path)
+
+    # - Lazily open tube
+    def init(self):
+        if self._io is not None:
+            raise RuntimeError("Tube already initialized.")
         self._io = self._open()
+        return self
 
     # - Config helpers
     def is_remote(self) -> bool:
@@ -87,7 +93,7 @@ class PwnStream:
         return process(self.file_path, env=env) if env else process(self.file_path)
 
     # - Alias
-    def alias(self) -> "PwnStream":
+    def alias(self) -> "Tube":
         """Enable io.s/io.sla/io.r/io.ru/io.uu64; chainable."""
         if self._io is None:
             raise RuntimeError("Call io.init() before io.alias().")
