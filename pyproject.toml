@@ -51,6 +51,7 @@ source = "vcs"
 # Write src/pwnkit/_version.py at build time
 [tool.hatch.build.hooks.vcs]
 version-file = "src/pwnkit/_version.py"
+raw-options = { local_scheme = "no-local-version" }
 
 # src-layout
 [tool.hatch.build.targets.wheel]
