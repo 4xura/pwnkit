@@ -137,15 +137,6 @@ Use a built-in template:
 ```bash
 pwnkit exp.py -t heap
 ```
-Use your own custom template (`*.tpl` or `*.py.tpl`):
-```bash
-pwnkit exp.py -t ./mytpl.py.tpl
-```
-Or put it in a directory and point `PWNKIT_TEMPLATES` to it:
-```bash
-export PWNKIT_TEMPLATES=~/templates
-pwnkit exploit.py -t mytpl
-```
 
 ### Python API
 
@@ -153,7 +144,7 @@ pwnkit exploit.py -t mytpl
 from pwnkit import *
 from pwn import *
 
-# push a context preset
+# - Push a context preset
 ctx = Context.preset("linux-amd64-debug")
 """
 ctx = Context(
@@ -242,6 +233,40 @@ Available presets (built-in):
 * `linux-aarch64-quiet`
 * `freebsd-amd64-debug`
 * `freebsd-amd64-quiet`
+
+---
+
+## Custom Templates
+
+Templates (`*.tpl` or `*.py.tpl`) are rendered with a context dictionary.
+Inside your template file you can use Python format placeholders (`{var}`) corresponding to:
+
+ | Key           | Meaning                                                      |
+ | ------------- | ------------------------------------------------------------ |
+ | `{arch}`      | Architecture string (e.g. `"amd64"`, `"i386"`, `"arm"`, `"aarch64"`) |
+ | `{os}`        | OS string (currently `"linux"` or `"freebsd"`)               |
+ | `{endian}`    | Endianness (`"little"` or `"big"`)                           |
+ | `{log}`       | Log level (e.g. `"debug"`, `"info"`)                         |
+ | `{term}`      | Tuple of terminal program args (e.g. `("tmux", "splitw", "-h")`) |
+ | `{file_path}` | Path to target binary passed with `-f/--file`                |
+ | `{libc_path}` | Path to libc passed with `-l/--libc`                         |
+ | `{host}`      | Remote host (if set via `-i/--host`)                         |
+ | `{port}`      | Remote port (if set via `-p/--port`)                         |
+ | `{io_line}`   | Pre-rendered code line that initializes the `Tube`           |
+ | `{author}`    | Author name from `-a/--author`                               |
+ | `{blog}`      | Blog URL from `-b/--blog`                                    |
+
+Use your own custom template (`*.tpl` or `*.py.tpl`):
+```bash
+pwnkit exp.py -t ./mytpl.py.tpl
+```
+Or put it in a directory and point `PWNKIT_TEMPLATES` to it:
+```bash
+export PWNKIT_TEMPLATES=~/templates
+pwnkit exploit.py -t mytpl
+```
+for devs, you can also place your templates into `src/pwnkit/templates` before cloning and building to make a built-in. You are also welcome to submit a custom template there in this repo for a pull request!
+
 
 
 
