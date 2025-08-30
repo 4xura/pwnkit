@@ -1,7 +1,5 @@
 # pwnkit
 
-**[!] Under construction.
-
 [![PyPI version](https://img.shields.io/pypi/v/pwnkit.svg)](https://pypi.org/project/pwnkit/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python Versions](https://img.shields.io/pypi/pyversions/pwnkit.svg)](https://pypi.org/project/pwnkit/)
