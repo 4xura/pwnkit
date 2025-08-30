@@ -265,7 +265,7 @@ Or put it in a directory and point `PWNKIT_TEMPLATES` to it:
 export PWNKIT_TEMPLATES=~/templates
 pwnkit exploit.py -t mytpl
 ```
-For devs, you can also place your exploit templates (which is just a Python file of filename ending with `tpl` suffix) into `src/pwnkit/templates`, before cloning and building to make a built-in. You are also welcome to submit a custom template there in this repo for a pull request!
+For devs, you can also place your exploit templates (which is just a Python file of filename ending with `tpl` suffix) into [`src/pwnkit/templates`](https://github.com/4xura/pwnkit/tree/main/src/pwnkit/templates), before cloning and building to make a built-in. You are also welcome to submit a custom template there in this repo for a pull request!
 
 
 
