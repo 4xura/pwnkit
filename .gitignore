@@ -211,3 +211,4 @@ __marimo__/
 clean.sh
 build.sh
 tag_release.sh
+src/pwnkit/_version.py
