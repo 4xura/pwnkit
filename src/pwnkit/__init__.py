@@ -8,7 +8,7 @@ except ImportError:
 
 __all__: list[str] = ["__version__"]
 
-_modules = ("io", "encrypt", "rop", "gdbx", "utils", "ctx")
+_modules = ("io", "encrypt", "rop", "gdbx", "utils", "ctx", "shellcode", "hashpow")
 
 # - Import submodules once, export their public symbols, and expose modules as attributes
 for _m in _modules:

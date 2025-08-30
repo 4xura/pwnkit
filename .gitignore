@@ -208,3 +208,6 @@ __marimo__/
 
 # Project-specific
 *.bak
+clean.sh
+build.sh
+tag_release.sh

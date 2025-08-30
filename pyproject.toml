@@ -44,21 +44,20 @@ pwnkit = "pwnkit.__main__:cli"
 [project.optional-dependencies]
 dev = ["pytest"]
 
-# ---- Hatch config ----
-
-# Git-tag driven version
+# ---- Hatch (VCS version) ----
 [tool.hatch.version]
 source = "vcs"
 
-# Emit _version.py so runtime `import pwnkit; pwnkit.__version__` works
+# Write src/pwnkit/_version.py at build time
 [tool.hatch.build.hooks.vcs]
 version-file = "src/pwnkit/_version.py"
 
-# *** src-layout: point wheel to the package path(s) ***
+# src-layout
 [tool.hatch.build.targets.wheel]
 packages = ["src/pwnkit"]
+# If you want to ensure templates land in the wheel:
+# include = ["src/pwnkit/templates/*.tpl", "src/pwnkit/templates/*.py.tpl"]
 
-# What goes into sdist
 [tool.hatch.build.targets.sdist]
 include = [
   "src/pwnkit/**",
@@ -68,7 +67,6 @@ include = [
   "tests/**",
 ]
 
-# Optional global excludes
 [tool.hatch.build]
 exclude = ["*.bak", "*.swp", ".venv", "dist", "build", ".pytest_cache", ".ruff_cache"]
 
@@ -79,7 +77,20 @@ target-version = "py38"
 extend-select = ["E", "F", "I", "UP"]
 exclude = ["dist", ".venv"]
 
+# ---- Pytest ----
 [tool.pytest.ini_options]
-addopts = "-q"
+addopts = "-ra -q"
 testpaths = ["tests"]
+pythonpath = ["src"]
+filterwarnings = [
+  "ignore:invalid escape sequence:SyntaxWarning:ropgadget\\.",
+  "ignore:invalid escape sequence:SyntaxWarning:ropgadget\\..*",
+]
+
+# These setuptools sections are ignored by Hatch, but harmless;
+[tool.setuptools.package-data]
+pwnkit = ["templates/*.tpl", "templates/*.py.tpl"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
 

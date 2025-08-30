@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional, Union, Dict
-from pwn import tube, u64  # type: ignore
+from pwn import tube, u64   # type: ignore
 import os
 
 __all__ = [
@@ -11,7 +11,6 @@ __all__ = [
 ]
 
 Chars = Union[str, bytes]
-
 
 # Init a Tube for IO stream
 # ------------------------------------------------------------------------
@@ -29,7 +28,7 @@ class Tube:
         # custom env (merged with libc preload if local)
         io = Tube("./vuln", env={"ASAN_OPTIONS":"detect_leaks=0"}).alias()
     """
-    file_path   : str
+    file_path   : Optional[str] = None
     libc_path   : Optional[str] = None
     host        : Optional[str] = None
     port        : Optional[int] = None
@@ -42,7 +41,8 @@ class Tube:
     def __post_init__(self):
         if (self.host is None) ^ (self.port is None):
             raise ValueError("Both host and port must be set for remote mode.")
-        self.file_path = os.path.abspath(self.file_path)
+        if self.file_path:
+            self.file_path = os.path.abspath(self.file_path)
         if self.libc_path:
             self.libc_path = os.path.abspath(self.libc_path)
 
@@ -117,7 +117,7 @@ class Tube:
         assert self._aliased, "Call io.alias() to enable shortcuts."
         self._t().send(data)
 
-    def sa(self, delim: Chars, data: bytes) -> None:
+    def sa(self, delim: Chars, data: Chars) -> None:
         assert self._aliased, "Call io.alias() to enable shortcuts."
         self._t().sendafter(delim, data)
 
@@ -144,10 +144,24 @@ class Tube:
 # Global short aliases (optional)
 # ------------------------------------------------------------------------
 _global_io: tube | None = None
-def set_global_io(io: tube) -> None:
-    """Enable global s/sa/sl/sla/r/ru helpers."""
+
+def set_global_io(obj) -> None:
+    """
+    Register the default IO used by the global shorthands (s, sa, sl, sla, r, ru, uu64).
+    Accepts either:
+      - Tube (wrapper): we'll call ._t() to get the underlying pwntools tube
+      - pwntools tube directly
+    """
     global _global_io
-    _global_io = io
+    # Tube wrapper?
+    if hasattr(obj, "_t"):
+        _global_io = obj._t()
+        return
+    # Raw pwntools tube?
+    if hasattr(obj, "send") and hasattr(obj, "recv"):
+        _global_io = obj
+        return
+    raise TypeError("set_global_io() expects a Tube or a pwntools tube")
 
 def _io() -> tube:
     assert _global_io is not None, "Global io not set; call set_global_io(io)."
