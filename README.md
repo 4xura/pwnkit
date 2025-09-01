@@ -296,3 +296,6 @@ For devs, you can also place your exploit templates (which is just a Python file
 
 * Move the template feature under mode `template`
 * Create other modes (when needed)
+* Fill up built-in exploit tempaltes
+* More Python exloit modules, e.g., decorators, heap exploit, etc.
+
