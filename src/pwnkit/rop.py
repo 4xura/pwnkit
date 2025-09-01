@@ -39,18 +39,18 @@ class ROPGadgets:
         return self.gadgets.get(k)
 
     def dump(self) -> None:
-		"""
-			Gadget       Address
-			-----------------------------------
-			p_rdi_r      0x000000000040123a
-			p_rsi_r      0x000000000040124b
-			p_rdx_rbx_r  None
-			p_rax_r      0x00000000004012ab
-			p_rsp_r      None
-			leave_r      0x00000000004011ff
-			ret          0x0000000000401005
-			syscall_r    0x00000000004012cd
-		"""
+        """
+        Gadget       Address
+        -----------------------------------
+        p_rdi_r      0x000000000040123a
+        p_rsi_r      0x000000000040124b
+        p_rdx_rbx_r  None
+        p_rax_r      0x00000000004012ab
+        p_rsp_r      None
+        leave_r      0x00000000004011ff
+        ret          0x0000000000401005
+        syscall_r    0x00000000004012cd
+        """
         print(f"{'Gadget':<12} {'Address'}")
         print("-" * 35)
         for name, addr in self.gadgets.items():
