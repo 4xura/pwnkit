@@ -30,6 +30,9 @@ pipx install pwnkit
 ```bash
 git clone https://github.com/4xura/pwnkit.git
 cd pwnkit
+#
+# Edit source code
+#
 pip install -e .
 ```
 
