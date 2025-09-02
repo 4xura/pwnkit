@@ -9,6 +9,7 @@ from pwnkit.utils import leak, pa, itoa, init_pr, pr_debug, pr_info, pr_warn, pr
 
 HEX = r"0x[0-9a-fA-F]+"
 ANSI = "\x1b["
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 def _capture_pwnlib_logs():
     """
@@ -33,29 +34,28 @@ def _restore_logger(logger, prev_level, prev_handlers, prev_prop):
     logger.handlers = prev_handlers
     logger.propagate = prev_prop
 
+def _deansi(s: str) -> str:
+    return ANSI_RE.sub("", s)
+
 def test_leak_prints_with_var_name_and_hex(monkeypatch):
     messages = []
-
-    # Patch the symbol used by our module (pwnkit.utils.success)
-    monkeypatch.setattr("pwnkit.utils.success", lambda msg: messages.append(str(msg)))
-
+    monkeypatch.setattr("pwnkit.utils.success",
+                        lambda msg: messages.append(str(msg)))
     buf = 0xdeadbeefcafebabe
     leak(buf)
-
-    # now we assert on our captured messages, independent of logging handlers
-    assert any("Leak buf" in m for m in messages)
-    assert any(re.search(HEX, m) for m in messages)
-
+    plain = [_deansi(m) for m in messages]
+    assert any("Leak buf" in m for m in plain)
+    assert any(re.search(HEX, m) for m in plain)
 
 def test_pa_alias_matches_leak(monkeypatch):
     messages = []
-    monkeypatch.setattr("pwnkit.utils.success", lambda msg: messages.append(str(msg)))
-
+    monkeypatch.setattr("pwnkit.utils.success",
+                        lambda msg: messages.append(str(msg)))
     val = 0x4141414142424242
     pa(val)
-
-    assert any("Leak val" in m for m in messages)
-    assert any(re.search(HEX, m) for m in messages)
+    plain = [_deansi(m) for m in messages]
+    assert any("Leak val" in m for m in plain)
+    assert any(re.search(HEX, m) for m in plain)
 
 
 def test_itoa_basic():
