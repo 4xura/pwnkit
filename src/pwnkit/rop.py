@@ -21,8 +21,10 @@ class ROPGadgets:
     def __post_init__(self) -> None:
         self._rop = ROP(self.elf)
         def addr(pats: Iterable[str]) -> Optional[int]:
-            found = self._rop.find_gadget(list(pats))
-            return (self.elf.address + found[0]) if found else None
+            g = self._rop.find_gadget(list(pats))
+            if not g:
+                return None
+            return getattr(g, "address", g[0])
 
         self.gadgets = {
             "p_rdi_r"     : addr(["pop rdi", "ret"]),

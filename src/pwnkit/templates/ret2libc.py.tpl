@@ -66,6 +66,8 @@ def xpl(**kwargs):
 	leave_r = ggs['leave_r']
 	ret 	= ggs['ret']
 
+	ggs.dump()
+
 	system = libc.sym.system
 	binsh  = next(libc.search(b'/bin/sh\x00'))
 

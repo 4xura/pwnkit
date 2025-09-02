@@ -48,7 +48,6 @@ init_pr("debug", "%(asctime)s - %(levelname)s - %(message)s", "%H:%M:%S")
 # EXPLOIT
 # ---------------------------------------------------------------------------
 def xpl(**kwargs):
-   
     """
     Breakpoints
 

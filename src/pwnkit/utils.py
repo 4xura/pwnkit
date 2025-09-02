@@ -8,7 +8,7 @@ __all__ = [
         "leak", "pa",
         "itoa",
         "init_pr",
-        "pr_debug", "pr_info", "pr_warn", "pr_error", "pr_critical", "pr_exception",
+        "logger", "pr_debug", "pr_info", "pr_warn", "pr_error", "pr_critical", "pr_exception",
         "parse_argv",
         ]
 
@@ -37,8 +37,9 @@ def leak(addr: int) -> None:
     except Exception:
         pass
 
-    c_addr = f"\033[1;33m{addr:#x}\033[0m"
-    success(f"Leak {desc:<16} addr: {c_addr}")
+    c_desc = f"\033[1;31m{desc:<16}\033[0m"		# red
+    c_addr = f"\033[1;33m{addr:#x}\033[0m"		# yellow
+    success(f"Leak {c_desc:<16} addr: {c_addr}")
 
 pa = leak
 
@@ -66,49 +67,51 @@ class ColorFormatter(logging.Formatter):
 logger = logging.getLogger("pwnkit")
 
 def init_pr(
-        level: Literal["debug","info","warning","error","critical"]="info",
-        fmt: str = "%(asctime)s - %(levelname)s - %(message)s",
-        datefmt: str = "%H:%M:%S",
-    ) -> None:
+    level: Literal["debug","info","warning","error","critical"] = "info",
+    fmt: str = "%(asctime)s - %(levelname)s - %(message)s",
+    datefmt: str = "%H:%M:%S",
+) -> None:
     """
-    Configure colored logging.
+    Initialize logging for the 'pwnkit' namespace.
 
-        @level   : log level name (default: "info")
-        @fmt     : log format string (default: "%(asctime)s - %(levelname)s - %(message)s")
-        @datefmt : datetime format string (default: "%H:%M:%S")
+    - Configures only the 'pwnkit' logger (not root), so pwntools' own logging
+      remains intact.
+    - Installs a single StreamHandler with colored output.
+    - Allows switching level at runtime: "debug", "info", etc.
     """
-    formatter = ColorFormatter(fmt=fmt, datefmt=datefmt)
-    handler = logging.StreamHandler()
-    handler.setFormatter(formatter)
+    lvl = getattr(logging, level.upper(), logging.INFO)
 
-    try:
-        logging.basicConfig(
-            level=getattr(logging, level.upper(), logging.INFO),
-            handlers=[handler],
-            force=True,  # Python 3.8+
-        )
-    except TypeError:
-        logger.handlers.clear()
-        logger.addHandler(handler)
-        logger.setLevel(getattr(logging, level.upper(), logging.INFO))
+    logger.propagate = False	# avoids duplicate messages
+    logger.setLevel(lvl)
+    logger.handlers = [h for h in logger.handlers if not isinstance(h, logging.StreamHandler)]
+
+    h = logging.StreamHandler()
+    h.setFormatter(ColorFormatter(fmt=fmt, datefmt=datefmt))
+    h.setLevel(lvl)  # optional
+    logger.addHandler(h)
+
+    plog = logging.getLogger("pwnlib")	# Align pwntools' logging level
+    if lvl <= logging.DEBUG:
+        plog.setLevel(logging.DEBUG)
+    plog.propagate = False
 
 def pr_debug(msg):
-    logging.debug(msg)
+    logger.debug(msg)
 
 def pr_info(msg):
-    logging.info(msg)
+    logger.info(msg)
 
 def pr_warn(msg):
-    logging.warning(msg)
+    logger.warning(msg)
 
 def pr_error(msg):
-    logging.error(msg)
+    logger.error(msg)
 
 def pr_critical(msg):
-    logging.critical(msg)
+    logger.critical(msg)
 
 def pr_exception(msg):
-    logging.exception(msg)
+    logger.exception(msg)
 
 # Usage
 # ------------------------------------------------------------------------

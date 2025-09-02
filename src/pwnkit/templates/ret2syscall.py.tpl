@@ -67,6 +67,8 @@ def xpl(**kwargs):
 	leave_r = ggs['leave_r']
 	ret 	= ggs['ret']
 
+	ggs.dump()
+
 	buf  = 0xdeadbeef	# address to write "/bin/sh\x00"
 	fd   = 0
 

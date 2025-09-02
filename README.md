@@ -186,7 +186,7 @@ p_rsp_r = ggs['p_rsp_r']
 p_rdx_rbx_r = ggs['p_rdx_rbx_r']
 leave_r = ggs['leave_r']
 ret 	= ggs['ret']
-...
+ggs.dump()  # dump all gadgets to stdout
 
 # - libc Pointer protection
 # 1) Pointer guard
