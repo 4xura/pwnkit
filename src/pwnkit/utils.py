@@ -2,7 +2,7 @@ from __future__ import annotations
 import inspect
 from pwn import success  
 from typing import Literal, Optional, Tuple, Sequence
-import logging, sys
+import logging, sys, os
 
 __all__ = [
         "leak", "pa",
@@ -155,3 +155,14 @@ def parse_argv(argv: Sequence[str],
 
     return _usage(argv)
 
+# Helpers
+# ------------------------------------------------------------------------
+def _colorize():
+    if sys.stdout.isatty() and not os.environ.get("NO_COLOR"):
+        return {
+            "bold": "\033[1m",
+            "grn":  "\033[32m",
+            "cya":  "\033[36m",
+            "clr":  "\033[0m",
+        }
+    return dict.fromkeys(["bold", "grn", "cya", "clr"], "")

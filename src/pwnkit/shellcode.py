@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, Optional, Tuple, Union, Literal
 from pwn import pack  # kept for sockaddr builder
+from .utils import _colorize
 import ipaddress
 
 __all__ = [
@@ -17,6 +18,8 @@ __all__ = [
     "hex_shellcode",
     "build_sockaddr_in",
 ]
+
+COL = _colorize()
 
 # CORE TYPES
 # --------------------------------------------------------------------------------------
@@ -36,6 +39,22 @@ class Shellcode:
     arch: Arch
     blob: bytes
     desc: str = ""
+
+    def dump(self, dump_hex: bool = True, prefix: str = "[+] ") -> None:
+        """Pretty-print metadata and optional hex view of this shellcode."""
+        base, variant = self.name, None
+        if ":" in self.name:
+            base, variant = self.name.split(":", 1)
+        header = (f"{COL['grn']}{prefix}{COL['clr']}Shellcode: "
+                  f"{COL['bold']}{base}{COL['clr']}"
+                  + (f" (variant {variant}" if variant else "")
+                  + f", {COL['cya']}{self.arch}{COL['clr']}), "
+                  f"{len(self.blob)} bytes")
+        print(header)
+        if self.desc:
+            print(f"{COL['grn']}{prefix}{COL['clr']}Description: {self.desc}")
+        if dump_hex:
+            print(hex_shellcode(self.blob))
 
 # SHELLCODES (arch -> entries)
 # --------------------------------------------------------------------------------------

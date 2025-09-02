@@ -215,6 +215,8 @@ sc = ShellcodeReigstry.get("amd64", "execve_bin_sh")
 print(f"[+] Got shellcode: {sc.name} ({sc.arch}), {len(sc.blob)} bytes")
 print(hex_shellcode(sc.blob))   # output as hex
 
+sc.dump()   # pretty dump
+
 # 3) Retrieve explicit variant
 sc = ShellcodeReigstry.get("i386", "execve_bin_sh", variant=33)
 print(f"[+] Got shellcode: {sc.name} ({sc.arch}), {len(sc.blob)} bytes")
