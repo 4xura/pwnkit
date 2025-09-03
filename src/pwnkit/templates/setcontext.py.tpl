@@ -26,7 +26,7 @@ elf        = ELF(BIN_PATH, checksec=False)
 libc       = ELF(LIBC_PATH) if LIBC_PATH else None
 host, port = parse_argv(sys.argv[1:], {host!r}, {port!r})
 
-ctx = Context(
+Context(
     arch      = {arch!r},
     os        = {os!r},
     endian    = {endian!r},

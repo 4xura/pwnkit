@@ -94,7 +94,7 @@ elf        = ELF(BIN_PATH, checksec=False)
 libc       = ELF(LIBC_PATH) if LIBC_PATH else None
 host, port = parse_argv(sys.argv[1:], None, None)	# default local mode 
 
-ctx = Context(
+Context(
     arch      = 'aarch64',
     os        = 'linux',
     endian    = 'big',
