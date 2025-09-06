@@ -92,6 +92,8 @@ _DEFAULT_FILE_SIZE = {
     "amd64": 0xe0,
 }
 
+SIGNED_FIELDS = {"_vtable_offset"}  # signed 1 byte (-128..127)
+
 # Instantize an _IO_FILE_plus struct
 # ---------------------------------------------------------------------------
 from .ctx import Arch   # Arch = Literal["amd64", "i386", "arm", "aarch64"]
@@ -208,9 +210,9 @@ class IOFilePlus:
         print("\n".join(meta + [""] + rows))
 
     # - Get/set by field 
-    def _resolve(self, key: Key) -> Tuple[int, int]:
+    def _resolve(self, key: Key) -> Tuple[int, int, bool]:
         """
-        Normalize an IO FILE field selector to (offset, size).
+        Normalize an IO FILE field selector to (offset, size, signed_flag).
         - If key is int: treat as byte offset; look up size from _map.
         - If key is str: look up by field name via offset_of().
         """
@@ -221,26 +223,31 @@ class IOFilePlus:
                 _name, sz = self._map[off]
             except KeyError:
                 raise KeyError(f"Unknown offset 0x{off:x} for arch {self.arch}")
-            size = self._size_of(sz)
-            return off, size
+            size   = self._size_of(sz)
+            signed = (name in SIGNED_FIELDS)
+            return off, size, signed
 
         # str → field name
         off = self.offset_of(key)
         _name, sz = self._map[off]
         size = self._size_of(sz)
-        return off, size
+        signed = (name in SIGNED_FIELDS)
+        return off, size, signed
 
     # Get/Set that accept name or offset
     def set(self, key: Key, value: int) -> "IOFilePlus":
         """Set numeric field (int or pointer) by field name or byte offset."""
-        off, size = self._resolve(key)
-        self.data[off:off+size] = pack(value, word_size=size*8, endianness=context.endian, sign=False)
+        off, size, signed = self._resolve(key)
+		self.data[off:off+size] = pack(value, word_size=size*8,
+									   endianness=context.endian,
+									   sign=signed)
         return self
 
     def get(self, key: Key) -> int:
         """Get numeric field by field name or byte offset."""
-        off, size = self._resolve(key)
-        return unpack(bytes(self.data[off:off+size]), word_size=size*8, endianness=context.endian, sign=False)
+        off, size, signed = self._resolve(key)
+		return unpack(bytes(self.data[off:off+size]), word_size=size*8,
+							endianness=context.endian, sign=signed)
 
     # - Aliases for common fields
     #   _flags
