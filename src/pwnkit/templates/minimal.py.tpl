@@ -3,7 +3,7 @@
 
 from pwnkit import *
 from pwn import *
-import os, sys
+import sys
 
 BIN_PATH   = {file_path!r}
 LIBC_PATH  = {libc_path!r}

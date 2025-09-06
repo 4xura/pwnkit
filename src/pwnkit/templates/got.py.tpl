@@ -18,7 +18,7 @@
 
 from pwnkit import *
 from pwn import *
-import os, sys
+import sys
 
 # CONFIG
 # ------------------------------------------------------------------------
