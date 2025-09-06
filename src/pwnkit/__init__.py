@@ -18,6 +18,7 @@ _modules: tuple[str, ...] = (
     "ctx",
     "shellcode",
     "hashpow",
+    "FILE",
 )
 
 # --- Exports ---
@@ -56,5 +57,8 @@ if TYPE_CHECKING:
     )
     from .hashpow import (
         BruteForcer, solve_pow, solve_pow_mt,
+    )
+    from .FILE import (
+        IOFilePlus, IO_FILE_MAPS,
     )
 # --- TYPE_CHECKING END (auto-generated) ---
