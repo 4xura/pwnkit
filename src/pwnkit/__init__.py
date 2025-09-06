@@ -1,21 +1,60 @@
 from __future__ import annotations
-import importlib as _il
+from typing import Tuple, List
+import importlib
 
+# --- Version ---
 try:
     from ._version import __version__ 
 except ImportError:
     __version__ = "0.0.0"
 
-__all__: list[str] = ["__version__"]
+# --- Submodules ---
+_modules: tuple[str, ...] = (
+    "io",
+    "encrypt",
+    "rop",
+    "gdbx",
+    "utils",
+    "ctx",
+    "shellcode",
+    "hashpow",
+)
 
-_modules = ("io", "encrypt", "rop", "gdbx", "utils", "ctx", "shellcode", "hashpow")
+# --- Exports ---
+__all__: List[str] = ["__version__"]
 
-# - Import submodules once, export their public symbols, and expose modules as attributes
-for _m in _modules:
-    _mod = _il.import_module(f"{__name__}.{_m}")
-    # - Re-export each submodule's public API
-    for _name in getattr(_mod, "__all__", ()):
-        globals()[_name] = getattr(_mod, _name)
-        __all__.append(_name)
-    # - Make them available as pwnkit.io, pwnkit.utils, ...
-    globals()[_m] = _mod
+for name in _modules:
+    mod = importlib.import_module(f".{name}", __name__)
+    globals()[name] = mod
+    for sym in getattr(mod, "__all__", ()):
+        globals()[sym] = getattr(mod, sym)
+        __all__.append(sym)
+    __all__.append(name)
+
+# --- TYPE_CHECKING BEGIN (auto-generated; do not edit) ---
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .io import (
+        Tube, r, ru, s, sa, set_global_io, sl, sla, uu64,
+    )
+    from .encrypt import (
+        PointerGuard, SafeLinking,
+    )
+    from .rop import ROPGadgets
+    from .gdbx import (
+        g, ga,
+    )
+    from .utils import (
+        init_pr, itoa, leak, logger, pa, parse_argv, pr_critical, pr_debug, pr_error, pr_exception,
+        pr_info, pr_warn,
+    )
+    from .ctx import Context
+    from .shellcode import (
+        Arch, SHELLCODES, Shellcode, ShellcodeBuilder, ShellcodeReigstry, build_sockaddr_in,
+        hex_shellcode, list_shellcodes,
+    )
+    from .hashpow import (
+        BruteForcer, solve_pow, solve_pow_mt,
+    )
+# --- TYPE_CHECKING END (auto-generated) ---
