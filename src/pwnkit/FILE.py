@@ -92,7 +92,7 @@ _DEFAULT_FILE_SIZE = {
     "amd64": 0xe0,
 }
 
-SIGNED_FIELDS = {"_vtable_offset"}  # signed 1 byte (-128..127)
+SIGNED_FIELDS: set[str] = {"_vtable_offset"}  # signed char (-128..127)
 
 # Instantize an _IO_FILE_plus struct
 # ---------------------------------------------------------------------------
@@ -105,13 +105,15 @@ class IOFilePlus:
     size: int = field(init=False)
     data: bytearray = field(init=False)
     _map: Dict[int, Tuple[str, int | object]] = field(init=False, repr=False)
+    _ptr_fields: Tuple[str] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.arch not in IO_FILE_MAPS:
             error(f"Unsupported arch '{self.arch}'")
-        self._map = IO_FILE_MAPS[self.arch]
         self.size = _DEFAULT_FILE_SIZE[self.arch]        
         self.data = bytearray(self.size)
+        self._map = IO_FILE_MAPS[self.arch]
+        self._ptr_fields = {name for _off, (name, spec) in self._map.items() if spec is PTR}
 
     # - Utilities
     @property
@@ -146,108 +148,142 @@ class IOFilePlus:
 
     def dump(
         self,
-        *,
+        # *,
+        title: str = "IO_FILE_plus dump",
         only_nonzero: bool = False,
         show_bytes: bool = True,
         highlight_ptrs: bool = True,
         color: bool = True,
     ) -> None:
         """
-        Print a table of (offset, name, size, hex, dec, bytes).
+        Fixed-width columns:
+          OFF(6) | NAME(24) | SZ(2) | HEX(3 + 2*ptr) | DEC(20) | BYTES(full)
+        - HEX is zero-padded to ptr width (16 digits on amd64 / 8 on i386).
+        - Handles signed char inside SIGNED_FIELD, e.g, _vtable_offset 
+        - Pointers are detected via the PTR sentinel, not by raw size.
+
+            @title          : heading above the table
             @only_nonzero   : hide zero-valued fields
-            @show_bytes     : include the raw hex bytes column
+            @show_bytes     : include raw BYTES column (full, no preview)
             @highlight_ptrs : bold pointer-sized fields
             @color          : ANSI colors
         """
-        def c(s: str, code: str) -> str:
-            if not color: return s
-            return f"\x1b[{code}m{s}\x1b[0m"
+        def paint(s: str, code: str) -> str:
+            return f"\x1b[{code}m{s}\x1b[0m" if color else s
+        def cell(text: str, width: int, align: str = ">") -> str:
+            return f"{text:{align}{width}}"
 
-        BOLD = "1"
-        DIM  = "2"
-        CYAN = "36"
-        MAG  = "35"
-        YEL  = "33"
+        BOLD, DIM, CYAN, MAG, YEL = "1", "2", "36", "35", "33"
 
-        rows: List[str] = []
-        header = f"{c('OFF',BOLD):>6}  {c('NAME',BOLD):<24}  {c('SZ',BOLD):>3}  {c('HEX',BOLD):>18}  {c('DEC',BOLD):>20}"
-        if show_bytes:
-            header += f"  {c('BYTES',BOLD)}"
-        rows.append(header)
+        # widths
+        OFF_W, NAME_W, SZ_W = 6, 24, 2
+        HEX_DIGITS = self.ptr_size * 2                  # 16 on amd64, 8 on i386
+        HEX_W = 3 + HEX_DIGITS                          # '-0x' or ' 0x' + digits
+        DEC_W = 20
 
-        # walk the layout
-        for off, (name, desc_sz) in sorted(self._map.items()):
-            size = self._size_of(desc_sz)
+        be = (context.endian == "big")
+        byteorder = "big" if be else "little"
+
+        # title + meta
+        bar = "-" * max(8, len(title))
+        print(paint(title, BOLD))
+        print(bar)
+        print(f"{paint('arch',BOLD)}: {self.arch}   {paint('ptr size',BOLD)}: {self.ptr_size}   {paint('size',BOLD)}: {self.size}\n")
+
+        # header
+        hdr = "  ".join([
+            paint(cell("OFF",  OFF_W, ">"), BOLD),
+            paint(cell("NAME", NAME_W, "<"), BOLD),
+            paint(cell("SZ",   SZ_W,   ">"), BOLD),
+            paint(cell("HEX",  HEX_W,  ">"), BOLD),
+            paint(cell("DEC",  DEC_W,  ">"), BOLD),
+            *( [paint("BYTES", BOLD)] if show_bytes else [] )
+        ])
+        print(hdr)
+
+        # rows
+        for off, (name, spec) in sorted(self._map.items()):
+            size  = self.ptr_size if spec is PTR else int(spec)
             chunk = self.data[off:off+size]
 
-            signed = (name == "_vtable_offset" and size == 1)
-            be = (context.endian == "big")
-            byteorder = "big" if be else "little"
-            val = int.from_bytes(chunk, byteorder=byteorder, signed=signed)
+            # compute values for <=8B; blobs keep HEX/DEC narrow
+            if size <= 8:
+                is_signed = (name == "_vtable_offset" and size == 1)
+                uval = int.from_bytes(chunk, byteorder=byteorder, signed=False)
+                if is_signed:
+                    sval = int.from_bytes(chunk, byteorder=byteorder, signed=True)
+                    dec_raw = str(sval)                                 # signed for DEC
+                    hex_raw = f" 0x{uval:0{HEX_DIGITS}x}"               # raw byte for HEX (zero-extended)
+                    is_zero = (uval == 0)
+                else:
+                    dec_raw = str(uval)
+                    hex_raw = f" 0x{uval:0{HEX_DIGITS}x}"
+                    is_zero = (uval == 0)
+            else:
+                hex_raw = f"[{size}B]"
+                dec_raw = "-"
+                is_zero = all(b == 0 for b in chunk)
 
-            if only_nonzero and val == 0:
-                continue
+            # name styling: use cached pointer set
+            is_ptr = (name in getattr(self, "_ptr_fields", ()))
 
-            hexval = f"0x{val:0{size*2}x}" if not signed or val >= 0 else f"-0x{(-val):0{size*2}x}"
-            decval = str(val)
-            bhex   = chunk.hex()
+            if highlight_ptrs and is_ptr:
+                # always bold pointers, zero or not
+                name_txt = paint(cell(name, NAME_W, "<"), BOLD)
+            else:
+                # non-pointers: dim zeros, normal otherwise
+                name_txt = paint(cell(name, NAME_W, "<"), DIM) if is_zero else cell(name, NAME_W, "<")
 
-            shown_name = name
-            if highlight_ptrs and size == self.ptr_size:
-                shown_name = c(shown_name, BOLD if val else DIM)
-            elif val == 0 and color:
-                shown_name = c(shown_name, DIM)
+            off_cell = cell(f"0x{off:04x}", OFF_W, ">")
+            sz_cell  = cell(str(size), SZ_W, ">")
+            hex_cell = paint(cell(hex_raw, HEX_W, ">"), CYAN)
+            dec_cell = paint(cell(dec_raw, DEC_W, ">"), MAG)
 
-            line = f"{off:#06x}  {shown_name:<24}  {size:>3}  {c(hexval, CYAN):>18}  {c(decval, MAG):>20}"
+            line = "  ".join([off_cell, name_txt, sz_cell, hex_cell, dec_cell])
             if show_bytes:
-                line += f"  {c(bhex, YEL)}"
-            rows.append(line)
-
-        # header/meta up top
-        meta = [
-            f"{c('arch',BOLD)}: {self.arch}   {c('ptr size',BOLD)}: {self.ptr_size}   {c('size',BOLD)}: {self.size}",
-        ]
-        print("\n".join(meta + [""] + rows))
+                line += "  " + paint(chunk.hex(), YEL)
+            print(line)
 
     # - Get/set by field 
-    def _resolve(self, key: Key) -> Tuple[int, int, bool]:
+    def _resolve(self, key: Key) -> Tuple[int, int, bool, str]:
         """
-        Normalize an IO FILE field selector to (offset, size, signed_flag).
-        - If key is int: treat as byte offset; look up size from _map.
-        - If key is str: look up by field name via offset_of().
+        Normalize selector to (offset, size_bytes, signed_flag, field_name).
+        - int  -> treat as byte offset (look up name, size)
+        - str  -> treat as field name (look up offset, size)
         """
-        # int → offset
         if isinstance(key, int):
             off = key
             try:
-                _name, sz = self._map[off]
+                field_name, sz_spec = self._map[off]
             except KeyError:
                 raise KeyError(f"Unknown offset 0x{off:x} for arch {self.arch}")
-            size   = self._size_of(sz)
-            signed = (name in SIGNED_FIELDS)
-            return off, size, signed
+        else:
+            field_name = key
+            off = self.offset_of(field_name)
+            _field_name, sz_spec = self._map[off]
+            # (optional) assert the map name matches
+            assert _field_name == field_name
 
-        # str → field name
-        off = self.offset_of(key)
-        _name, sz = self._map[off]
-        size = self._size_of(sz)
-        signed = (name in SIGNED_FIELDS)
-        return off, size, signed
+        size   = self._size_of(sz_spec)
+        signed = field_name in SIGNED_FIELDS
+        return off, size, signed, field_name
 
-    # Get/Set that accept name or offset
     def set(self, key: Key, value: int) -> "IOFilePlus":
         """Set numeric field (int or pointer) by field name or byte offset."""
-        off, size, signed = self._resolve(key)
-		self.data[off:off+size] = pack(value, word_size=size*8,
-									   endianness=context.endian,
-									   sign=signed)
+        off, size, signed, _ = self._resolve(key)
+        self.data[off:off+size] = pack(value,
+                                       word_size=size * 8,
+                                       endianness=context.endian,
+                                       sign=signed)
         return self
 
     def get(self, key: Key) -> int:
         """Get numeric field by field name or byte offset."""
-        off, size, signed = self._resolve(key)
-		return unpack(bytes(self.data[off:off+size]), word_size=size*8,
-							endianness=context.endian, sign=signed)
+        off, size, signed, _ = self._resolve(key)
+        return unpack(bytes(self.data[off:off+size]),
+                      word_size=size * 8,
+                      endianness=context.endian,
+                      sign=signed)
 
     # - Aliases for common fields
     #   _flags
