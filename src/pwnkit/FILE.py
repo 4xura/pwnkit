@@ -128,9 +128,13 @@ class IOFilePlus:
     def _size_of(self, sz: int | object) -> int:
         return self.ptr_size if sz is PTR else int(sz)
 
-    def fields(self) -> Iterable[Tuple[int, str, int]]:
+    def iter_fields(self) -> Iterable[Tuple[int, str, int]]:
         for off, (name, sz) in sorted(self._map.items()):
             yield off, name, self._size_of(sz)
+
+    @property
+    def fields(self) -> list[Tuple[str, int, str]]:
+        return list(self.iter_fields())
 
     def offset_of(self, field_name: str) -> int:
         for off, (name, _sz) in self._map.items():
@@ -439,7 +443,9 @@ class IOFilePlus:
         obj.data[:len(blob)] = blob
         return obj
 
-    def bytes(self) -> bytes:
+    def to_bytes(self) -> bytes:
         return bytes(self.data)
-
-
+    
+    @property
+    def bytes(self) -> bytes:
+        return self.to_bytes()
