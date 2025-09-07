@@ -55,7 +55,7 @@ def test_amd64_basic_fields_and_lengths(capsys):
 
     # size & ptr width
     assert f.ptr_size == 8
-    assert len(f.bytes()) == 0xE0  # 224
+    assert len(f.bytes) == 0xE0  # 224
 
     # set by name
     f.flags = 0xFBAD0000
@@ -135,13 +135,13 @@ def test_amd64_from_bytes_hydration_roundtrip():
     set_arch("amd64")
     f0 = IOFilePlus("amd64")
     # craft a blob: set vtable_offset raw byte to 0xfe (signed = -2)
-    blob = bytearray(f0.bytes())
+    blob = bytearray(f0.bytes)
     blob[f0.offset_of("_vtable_offset")] = 0xFE
     f = IOFilePlus.from_bytes(bytes(blob), arch="amd64")
     assert f.vtable_offset == -2
     # mutate & re-emit
     f.vtable = 0x1111222233334444
-    out = f.bytes()
+    out = f.bytes
     assert isinstance(out, bytes)
     assert len(out) == 0xE0
 
@@ -153,7 +153,7 @@ def test_i386_signed_and_hex_padding(capsys):
     f = IOFilePlus("i386")
 
     assert f.ptr_size == 4
-    assert len(f.bytes()) == 0x98
+    assert len(f.bytes) == 0x98
 
     f.vtable_offset = -1
     f.dump(color=False)
