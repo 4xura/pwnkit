@@ -14,7 +14,7 @@ host, port = parse_argv(sys.argv[1:], {host!r}, {port!r})
 Context(arch={arch!r}, os={os!r}, endian={endian!r}, log_level={log!r}, terminal={term!r}).push()
 
 io  = Tube(file_path=BIN_PATH, libc_path=LIBC_PATH, host=host, port=port, env={{}}).init().alias()
-set_global_io(io)	# s, sa, sl, sla, r, ru, uu64
+set_global_io(io)	# s, sa, sl, sla, r, ru, uu64, g, gp
 
 def xpl(**kwargs):
    

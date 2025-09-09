@@ -43,7 +43,7 @@ io = Tube(
     port      = port,
     env       = {{}}
 ).init().alias()
-set_global_io(io)	# s, sa, sl, sla, r, ru, uu64
+set_global_io(io)	# s, sa, sl, sla, r, ru, uu64, g, gp
 
 init_pr("debug", "%(asctime)s - %(levelname)s - %(message)s", "%H:%M:%S")
 
