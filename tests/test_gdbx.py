@@ -5,7 +5,7 @@ import pytest
 pwn = pytest.importorskip("pwn", reason="pwntools required for tube-type test")
 pytest.importorskip("pwnlib", reason="pwntools required for tube-type test")
 
-import ga  # your module under test
+import pwnkit.gdbx import ga
 
 
 class Sentinel:
