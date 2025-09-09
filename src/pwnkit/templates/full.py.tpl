@@ -54,7 +54,7 @@ def menu(n: int):
 def alloc():
     pass
 
-def dele():
+def free():
     pass
 
 def edit():

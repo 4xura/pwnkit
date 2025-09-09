@@ -1,13 +1,14 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional, Union, Dict
-from pwn import tube, u64   # type: ignore
+from .gdbx import ga
+from pwn import tube, u64, gdb, warn   # type: ignore
 import os
 
 __all__ = [
     "Tube",
     # optional global helpers:
-    "set_global_io", "s", "sa", "sl", "sla", "r", "ru", "uu64", 
+    "set_global_io", "s", "sa", "sl", "sla", "r", "ru", "uu64", "g",
 ]
 
 Chars = Union[str, bytes]
@@ -141,6 +142,11 @@ class Tube:
         assert self._aliased, "Call io.alias() to enable shortcuts."
         return u64(data.ljust(8, b"\x00"))
 
+    def g(self, script: str = "") -> None:
+        assert self._aliased, "Call io.alias() to enable shortcuts."
+        ga(target=self._t(), script=script)
+
+
 # Global short aliases (optional)
 # ------------------------------------------------------------------------
 _global_io: tube | None = None
@@ -174,5 +180,13 @@ def sla(d: Chars, x: Chars) -> None: return _io().sendlineafter(d, x)
 def r(n: int = 4096) -> bytes: return _io().recv(n)
 def ru(d: Chars, drop: bool = True) -> bytes: return _io().recvuntil(d, drop=drop)
 def uu64(x: bytes) -> int: return u64(x.ljust(8, b"\x00"))
+
+def g(script: str = "") -> None:
+    """
+    Attach GDB to the globally bound tube.
+    Examples:
+        g("b main\\ncontinue")
+    """
+    ga(target=_io(), script=script)
 
 

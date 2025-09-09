@@ -40,24 +40,24 @@ def test_safelinking_encrypt_property():
     assert (enc ^ fd) == key
 
 
-def test_safelinking_decrypt_progressive_smoke():
+def test_safelinking_decrypt_smoke():
     """
-    Current decrypt_progressive() is a heuristic, not exact.
+    Current decrypt() is a heuristic, not exact.
     We only sanity-check that the *very high* byte matches the original,
     which holds for the present implementation.
     """
-    print("[*] Testing SafeLinking progressive (smoke)...")
+    print("[*] Testing SafeLinking (smoke)...")
     heap_base = 0x555555000000
     s = SafeLinking(heap_base=heap_base)
 
     fd = 0xdeadbeefcafebabe
     enc = s.encrypt(fd)
-    dec = s.decrypt_progressive(enc)
+    dec = s.decrypt(enc)
 
-    print(f"    heap base   : {heap_base:#018x}")
-    print(f"    fd          : {fd:#018x}")
-    print(f"    encrypted   : {enc:#018x}")
-    print(f"    progressive : {dec:#018x}")
+    print(f"    heap base : {heap_base:#018x}")
+    print(f"    fd        : {fd:#018x}")
+    print(f"    encrypted : {enc:#018x}")
+    print(f"    decrypted : {dec:#018x}")
 
     # Very loose check: top byte matches (helps avoid false negatives
     # with the current progressive heuristic)

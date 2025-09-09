@@ -38,7 +38,7 @@ class SafeLinking:
     def encrypt(self, fd: int) -> int:
         return fd ^ (self.heap_base >> 12)
 
-    def decrypt_progressive(self, enc_fd: int) -> int:
+    def decrypt(self, enc_fd: int) -> int:
         key = 0
         plain = 0
         for i in range(1, 6):

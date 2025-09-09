@@ -37,15 +37,13 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .io import (
-        Tube, r, ru, s, sa, set_global_io, sl, sla, uu64,
+        Tube, g, r, ru, s, sa, set_global_io, sl, sla, uu64,
     )
     from .encrypt import (
         PointerGuard, SafeLinking,
     )
     from .rop import ROPGadgets
-    from .gdbx import (
-        g, ga,
-    )
+    from .gdbx import ga
     from .utils import (
         init_pr, itoa, leak, logger, pa, parse_argv, pr_critical, pr_debug, pr_error, pr_exception,
         pr_info, pr_warn,
