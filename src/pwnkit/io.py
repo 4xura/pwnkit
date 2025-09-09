@@ -2,13 +2,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional, Union, Dict
 from .gdbx import ga
-from pwn import tube, u64, gdb, warn   # type: ignore
+from pwn import pause, tube, u64, gdb, warn   # type: ignore
 import os
 
 __all__ = [
     "Tube",
     # optional global helpers:
-    "set_global_io", "s", "sa", "sl", "sla", "r", "ru", "uu64", "g",
+    "set_global_io", "s", "sa", "sl", "sla", "r", "ru", "uu64", 
+    "g", "gp",
 ]
 
 Chars = Union[str, bytes]
@@ -189,4 +190,6 @@ def g(script: str = "") -> None:
     """
     ga(target=_io(), script=script)
 
-
+def gp(script: str = "") -> None:
+    ga(target=_io(), script=script)
+    pause()
