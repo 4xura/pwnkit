@@ -1,90 +1,88 @@
-# tests/test_gdbx.py
-from __future__ import annotations
-
 import types
 import pytest
 
-from pwnkit.gdbx import ga
-from pwnlib.tubes.process import process as PwntoolsProcess  # used only for isinstance check
+# Skip tube-specific test cleanly if pwntools isn't present
+pwn = pytest.importorskip("pwn", reason="pwntools required for tube-type test")
+pytest.importorskip("pwnlib", reason="pwntools required for tube-type test")
+
+import ga  # your module under test
 
 
-def _dummy_local_process_instance():
-    """Create an instance that passes isinstance(x, PwntoolsProcess) without starting a real process."""
-    class _Dummy(PwntoolsProcess):
-        pass
-    return object.__new__(_Dummy)  # skip __init__, we only need isinstance to be true
-
-
-class _DummyRemote:
-    """Any non-PwntoolsProcess object acts as a 'remote' tube for our tests."""
+class Sentinel:
+    """Unique object to verify return value passthrough."""
     pass
 
 
-def test_ga_local_process_attaches(monkeypatch):
-    called = {}
+@pytest.fixture
+def attach_spy(monkeypatch):
+    """
+    Patch ga.gdb.attach to a spy that records calls and returns a sentinel.
+    """
+    calls = {"args": None, "kwargs": None}
+    ret = Sentinel()
 
-    def fake_attach(target, gdbscript=None):
-        called["target"] = target
-        called["gdbscript"] = gdbscript
+    def _spy(*args, **kwargs):
+        calls["args"] = args
+        calls["kwargs"] = kwargs
+        return ret
 
-    warnings = []
-
-    monkeypatch.setattr("pwnkit.gdbx.gdb.attach", fake_attach)
-    monkeypatch.setattr("pwnkit.gdbx.warn", lambda msg: warnings.append(msg))
-
-    io = _dummy_local_process_instance()
-    ga(io, script="b main\nc")
-
-    assert called["target"] is io
-    assert called["gdbscript"] == "b main\nc"
-    assert warnings == []
+    monkeypatch.setattr(ga.gdb, "attach", _spy)
+    return calls, ret
 
 
-def test_ga_remote_with_server_attaches(monkeypatch):
-    called = {}
-
-    def fake_attach(target, gdbscript=None):
-        called["target"] = target
-        called["gdbscript"] = gdbscript
-
-    warnings = []
-
-    monkeypatch.setattr("pwnkit.gdbx.gdb.attach", fake_attach)
-    monkeypatch.setattr("pwnkit.gdbx.warn", lambda msg: warnings.append(msg))
-
-    io = _DummyRemote()
-    server = ("127.0.0.1", 1337)
-    ga(io, script="b *0x401000\nc", server=server)
-
-    assert called["target"] == server              # attaches to (host, port)
-    assert called["gdbscript"] == "b *0x401000\nc"
-    assert warnings == []
+def test_exports_ga():
+    assert "ga" in getattr(ga, "__all__", []), "__all__ must export 'ga'"
 
 
-def test_ga_remote_without_server_warns(monkeypatch):
-    called = {"attach": False}
-    monkeypatch.setattr("pwnkit.gdbx.gdb.attach", lambda *a, **kw: called.__setitem__("attach", True))
-    msgs = []
-    monkeypatch.setattr("pwnkit.gdbx.warn", lambda m: msgs.append(m))
-
-    io = _DummyRemote()
-    ga(io, script="b main")
-
-    assert called["attach"] is False
-    assert len(msgs) == 1
-    assert "remote tube detected" in msgs[0]
+def test_ga_with_pid(attach_spy):
+    calls, ret = attach_spy
+    out = ga.ga(1337, script="break *main")
+    assert out is ret
+    # First positional argument should be the target
+    assert calls["args"] == (1337,)
+    # Script must be passed via 'gdbscript' kwarg
+    assert calls["kwargs"] == {"gdbscript": "break *main"}
 
 
-def test_ga_attach_failure_warns(monkeypatch):
-    def boom(*a, **kw):
-        raise RuntimeError("no gdb here")
+def test_ga_with_gdbserver_tuple(attach_spy):
+    calls, _ = attach_spy
+    host_port = ("127.0.0.1", 31337)
+    ga.ga(host_port, script="continue")
+    assert calls["args"] == (host_port,)
+    assert calls["kwargs"] == {"gdbscript": "continue"}
 
-    msgs = []
-    monkeypatch.setattr("pwnkit.gdbx.gdb.attach", boom)
-    monkeypatch.setattr("pwnkit.gdbx.warn", lambda m: msgs.append(m))
 
-    io = _dummy_local_process_instance()
-    ga(io, script="c")
+def test_ga_with_default_script_empty(attach_spy):
+    calls, _ = attach_spy
+    ga.ga(4242)  # no script provided
+    assert calls["args"] == (4242,)
+    assert calls["kwargs"] == {"gdbscript": ""}
 
-    assert any("GDB attach failed" in m for m in msgs)
+
+def test_ga_with_pwntools_tube(attach_spy):
+    """
+    Use a minimal in-memory pipe to stand in for a PwntoolsTube.
+    If you prefer, you can import and use process()/remote() directly.
+    """
+    calls, _ = attach_spy
+
+    # Build a tiny fake that quacks like a pwntools tube
+    from pwnlib.tubes.tube import tube as PwntoolsTube
+
+    class DummyTube(PwntoolsTube):
+        def __init__(self):
+            # Initialize minimal state required by base class
+            super().__init__(timeout=None)
+
+        # Implement abstract methods with no-ops for type sanity
+        def close(self): pass
+        def recv_raw(self, *a, **kw): return b""
+        def recv_raw_async(self, *a, **kw): return b""
+        def send_raw(self, *a, **kw): return 0
+        def connected(self): return True
+
+    t = DummyTube()
+    ga.ga(t, script="si")
+    assert calls["args"] == (t,)
+    assert calls["kwargs"] == {"gdbscript": "si"}
 
