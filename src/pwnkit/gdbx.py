@@ -20,5 +20,8 @@ def ga(target: AttachTarget, script: str = "") -> None:
 
 """
 We set global shortcut alias g(...) in io.py
-when alias() method is called via a pwnkit.io.Tube object
+1. When alias() method is called via a pwnkit.io.Tube object
+    then we can run io.g(...)
+2. Use set_global_io(io) to use global shortcut
+    then we can run g(...)
 """

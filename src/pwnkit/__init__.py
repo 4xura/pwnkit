@@ -37,7 +37,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .io import (
-        Tube, g, r, ru, s, sa, set_global_io, sl, sla, uu64,
+        Tube, g, gp, r, ru, s, sa, set_global_io, sl, sla, uu64,
     )
     from .encrypt import (
         PointerGuard, SafeLinking,
