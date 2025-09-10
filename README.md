@@ -434,9 +434,9 @@ f2 = IOFilePlus.from_bytes(blob=snapshot, arch="amd64")
 
 #### Others
 
-More modules are included in the `pwnkit` source, which are either for my personal scripting convention, or are under beta test. You can add your own modules under `src/pwnkit`, then embed it into `src/pwnkit/__init__.py`. 
+More modules are included in the `pwnkit` source, but some of them are currently for personal scripting conventions, or are under beta tests. You can add your own modules under `src/pwnkit`, then embed them into `src/pwnkit/__init__.py`. 
 
-When we want the symbols to be parsed via code editor (e.g., vim, vscode) for auto grammar suggestion, we can run this to export symbols all-in-one:
+When we want module symbols to be parsed via code editors (e.g., vim, vscode) for auto grammar suggestion, we can run this to export symbols all-at-once:
 
 ```bash
 python3 tools/gen_type_hints.py
