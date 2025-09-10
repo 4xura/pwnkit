@@ -9,7 +9,7 @@ pwnkit xpl.py -f ./travelgraph -l ./libc.so.6 -t heap
 
 About libc got hijacking: https://4xura.com/binex/pwn-got-hijack-libcs-internal-got-plt-as-rce-primitives/
 
-## Notes
+## Memos
 
 * Off by Null
 * House of Einherjar

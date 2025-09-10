@@ -8,7 +8,7 @@ pwnkit xpl.py -f ./travelgraph -l ./libc.so.6 -t heap
 CTF writeup: https://4xura.com/writeups-for-ctfs/pwn-travelgraph/
 About Largebin Attack: https://4xura.com/binex/heap/large-bin-attack/
 
-## Notes
+## Memos
 
 * House of Apple
 * Largebin Attack

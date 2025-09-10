@@ -7,7 +7,7 @@ pwnkit xpl.py -f ./evilcorp
 ## Writeup
 https://4xura.com/writeups-for-ctfs/htb-writeup-pwn-evil-corp/
 
-# Notes
+# Memos
 
 * Stack overflow
 * ret2shellcode

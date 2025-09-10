@@ -8,7 +8,7 @@ pwnkit xpl.py -f ./pstack -l ./libc.so.6 -t ret2libc
 
 /
 
-# Notes
+# Memos
 
 * Stack pivot
 * Control RBP
