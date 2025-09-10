@@ -2,7 +2,7 @@ Generate a template for this exploit with `pwnkit`:
 
 ```bash
 pip install pwnkit
-pwnkit xpl.py -f ./travelgraph -l ./libc.so.6 -t heap
+pwnkit xpl.py -t heap
 ```
 
 ## Writeup

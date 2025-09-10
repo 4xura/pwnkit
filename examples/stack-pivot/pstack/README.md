@@ -14,5 +14,6 @@ pwnkit xpl.py -f ./pstack -l ./libc.so.6 -t ret2libc
 * Control RBP
 * Leak libc puts
 * ROP
+* ret2libc
 * Glibc 2.35
 
