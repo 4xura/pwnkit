@@ -432,6 +432,99 @@ f2 = IOFilePlus.from_bytes(blob=snapshot, arch="amd64")
 
 > For example, we can dump an `IO_FILE_plus` structure data via pwndbg's `dump memory` command
 
+Create a quick IO FILE struct template using the `load()` method:
+
+```py
+f = IOFilePlus("amd64")
+
+# common fake _IO_FILE_plus for stdout-like layout
+ff = {
+    # housekeeping
+    "_flags": 0xfbad0000,				  # 0x00               
+
+    # readable window (no active read buffer)
+    "_IO_read_ptr":  0,                   # 0x08
+    "_IO_read_end":  0,                   # 0x10
+    "_IO_read_base": 0,                   # 0x18
+
+    # writable window
+    "_IO_write_base":0x404300,            # 0x20
+    "_IO_write_ptr": 0x404308,            # 0x28
+    "_IO_write_end": 0,                   # 0x30        
+
+    # backing buffer 
+    "_IO_buf_base":  0,                   # 0x38
+    "_IO_buf_end":   0,                   # 0x40
+    "_IO_save_base": 0,                   # 0x48
+    "_IO_backup_base": 0,                 # 0x50
+    "_IO_save_end":  0,                   # 0x58
+
+    # linkage & housekeeping
+    "_markers":      0,                   # 0x60
+    "_chain":        0,                   # 0x68
+    "_fileno":       1,                   # 0x70
+    "_flags2":       0,                   # 0x74
+    "_old_offset":   0,                   # 0x78
+    "_cur_column":   0,                   # 0x80
+    "_vtable_offset":0,                   # 0x82
+    "_shortbuf":     0,                   # 0x83
+    "_lock":         0,                   # 0x88
+    "_offset":       0,                   # 0x90
+    "_codecvt":      0,                   # 0x98
+    "_wide_data":    0,                   # 0xa0
+    "_freeres_list": 0,                   # 0xa8
+    "_freeres_buf":  0,                   # 0xb0
+    "__pad5":        0,                   # 0xb8
+    "_mode":         0,                   # 0xc0
+    "_unused2":      b"\x00"*0x14,        # 0xc4
+
+    # pivot: fake vtable 
+    "vtable":        0xdeadbeefcafebabe,  # 0xd8
+}
+
+f.load(ff, strict=True)
+
+# dump bytes for injection
+blob = f.bytes
+```
+
+Or use raw-offset template (1:1 with glibc layout):
+
+```py
+f = IOFilePlus("amd64")
+f.load([
+    (0x00, 0xfbad0000),           # _flags (4)
+    (0x08, 0x404100),             # _IO_read_ptr
+    (0x10, 0x404200),             # _IO_read_end
+    (0x18, 0x0),                  # _IO_read_base
+    (0x20, 0x404300),             # _IO_write_base
+    (0x28, 0x404308),             # _IO_write_ptr
+    (0x30, 0x0),                  # _IO_write_end
+    (0x38, 0x0),                  # _IO_buf_base
+    (0x40, 0x0),                  # _IO_buf_end
+    (0x48, 0x0),                  # _IO_save_base
+    (0x50, 0x0),                  # _IO_backup_base
+    (0x58, 0x0),                  # _IO_save_end
+    (0x60, 0x0),                  # _markers
+    (0x68, 0x0),                  # _chain
+    (0x70, 0x1),                  # _fileno
+    (0x74, 0x0),                  # _flags2
+    (0x78, 0x0),                  # _old_offset
+    (0x80, 0x0),                  # _cur_column (2B)
+    (0x82, 0x0),                  # _vtable_offset (1B, signed)
+    (0x83, 0x0),                  # _shortbuf (1B)
+    (0x88, 0x0),                  # _lock
+    (0x90, 0x0),                  # _offset
+    (0x98, 0x0),                  # _codecvt
+    (0xa0, 0x0),                  # _wide_data
+    (0xa8, 0x0),                  # _freeres_list
+    (0xb0, 0x0),                  # _freeres_buf
+    (0xb8, 0x0),                  # __pad5 (4B)
+    (0xc0, 0x0),                  # _mode (4B)
+    (0xd8, 0xdeadbeefcafebabe),   # vtable
+], strict=True)
+```
+
 #### Ucontext Buffering
 
 We are not here to discuss how to exploit with the `ucontext_t` buffer in glibc. This involves:
@@ -456,16 +549,16 @@ Set a few GPRs + RIP/RSP (aliases or full names):
 uc.set("uc_mcontext.gregs.RIP", 0x4011d0)         
 
 # sugars (case sensitive)
-uc.set_reg("rdi", 0x1337)                         
-uc.set_stack(
+uc.set_reg("rdi", 0x1337)	    	# set registers                     
+uc.set_stack(						# set signal stack
     sp    = 0x7fffffff0000,
     size  = 0x1111,
     flags = 0xdeadbeef
 )    
 
 # aliases (case insensitive)
-uc.set("RSP", 0x7fffffff0000)                     # field name alias 
-uc.rsi = 0x2222								      # property alias 
+uc.set("RSP", 0x7fffffff0000)		# field name alias 
+uc.rsi = 0x2222						# property alias 
 
 # same via bulk
 uc.load({
@@ -478,7 +571,141 @@ uc.dump(only_nonzero=True)
 
 ![ucontext_set](images/ucontext_set.jpg)
 
+Set/unset signals (sigset_t @ 0x128, 128 bytes in x86_64):
 
+```py
+# block SIGALRM (14) + SIGINT (2)
+uc.set_sigmask_block([14, 2])
+
+# OR explicit by bytes
+raw_mask = b"\x00" * 0x80
+uc.set("uc_sigmask[128]", raw_mask)
+```
+
+FPU: fldenv pointer + MXCSR:
+
+```py
+# build a classic 28-byte FSAVE environment and place it somewhere in mem you control
+env28 = fsave_env_28(fcw=0x037F)  # sane default
+fake_env_addr = 0x404000          # wherever your R/W buffer will live
+
+# write env28 there via your exploit (not shown); now point fpregs to it:
+uc.set_fpu_env_ptr(fake_env_addr)
+# or use alias
+uc.fldenv_ptr = fake_env_addr
+
+# set MXCSR inside the inline __fpregs_mem (FXSAVE blob inside ucontext)
+uc.mxcsr = 0x1F80
+# or explicitly:
+uc.set("__fpregs_mem.mxcsr", 0x1F80)
+
+uc.dump()
+```
+
+![ucontext_fsave](images/ucontext_fsave.jpg)
+
+Absolute offsets when you’re speedrunning:
+
+```py
+# write RIP via absolute offset (0xA8 inside ucontext)
+uc.set(0xA8, 0xdeadbeefcafebabe)
+
+# patch arbitrary blob (raw write; no name resolution)
+uc.patch(0x1A8, (0x037F).to_bytes(2, "little"))  # fcw in __fpregs_mem
+```
+
+Bulk load (dict or list of pairs):
+
+```py
+uc.load({
+    "rdi": 0xdeadbeef,
+    "rsi": 0xcafebabe,
+    "rsp": 0x7fffffeee000,
+    "rip": 0x4011d0,
+    "mxcsr": 0x1F80,
+})
+
+# or: list of [(field, value)] with mixed names/offsets
+uc.load([
+    ("rbx", 0),
+    (0x128, b"\x00"*0x80),          # sigmask
+])
+```
+
+Serialize → payload glue:
+
+```py
+payload = b"A"*0x100
+payload += uc.bytes                # or uc.to_bytes()
+
+# drop into whatever vector you have (overwrite on stack, heap chunk, etc.)
+# e.g. send(payload) or write to file
+```
+
+Parse from an existing blob (read–modify–write):
+
+```py
+blob = b"\x00"*0x3C8
+uc2 = UContext.from_bytes(blob, arch="amd64")
+```
+
+Quick template — instantiate `UContext` and feed it your dict straight into `.load()`:
+
+```py
+uc = UContext("amd64")
+
+uc.load({
+    # gregs
+    "R8":  0,		# 0x28
+    "R9":  0,		# 0x30
+    "R12": 0,		# 0x48
+    "R13": 0,		# 0x50
+    "R14": 0,		# 0x58
+    "R15": 0,		# 0x60
+    "RDI": 0,		# 0x68
+    "RSI": 0,		# 0x70
+    "RBP": 0,		# 0x78
+    "RBX": 0,		# 0x80
+    "RDX": 0,		# 0x88
+    "RAX": 0,		# 0x90
+    "RCX": 0,		# 0x98
+    "RSP": 0x7fffffff0000,	# 0xA0
+    "RIP": 0xdeadbeef,     	# 0xA8
+
+    # floating point stuff
+    "FPREGS": 0x404000,    	# 0xB0: fldenv pointer
+    "MXCSR":  0x1F80,      	# 0x1C0: default safe SSE state
+})
+
+# dump bytes for injection
+blob = uc.bytes   
+```
+
+Or if you prefer positional offset style:
+
+```py
+uc = UContext("amd64")
+uc.load([
+    (0x28, 0),         # R8
+    (0x30, 0),         # R9
+    (0x48, 0),         # R12
+    (0x50, 0),         # R13
+    (0x58, 0),         # R14
+    (0x60, 0),         # R15
+    (0x68, 0),         # RDI
+    (0x70, 0),         # RSI
+    (0x78, 0),         # RBP
+    (0x80, 0),         # RBX
+    (0x88, 0),         # RDX
+    (0x90, 0),         # RAX
+    (0x98, 0),         # RCX
+    (0xA0, 0x7fffffff0000), # RSP
+    (0xA8, 0xdeadbeef),     # RIP
+    (0xE0, 0x404000),       # fpregs ptr
+    (0x1C0, 0x1F80),        # mxcsr
+])
+blob = uc.bytes
+```
 
 #### Others
 

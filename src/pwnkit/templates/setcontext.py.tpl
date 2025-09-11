@@ -45,39 +45,36 @@ set_global_io(io)	# s, sa, sl, sla, r, ru, uu64, g, gp
 
 init_pr("debug", "%(asctime)s - %(levelname)s - %(message)s", "%H:%M:%S")
 
-# GOT 
-# ------------------------------------------------------------------------
-def create_ucontext(src: int, *, r8=0, r9=0, r12=0, r13=0, r14=0, r15=0,
-                    rdi=0, rsi=0, rbp=0, rbx=0, rdx=0, rcx=0,
-                    rsp=0, rip=0xdeadbeef) -> bytearray:
-	"""Create ucontext_t."""
-    b = flat({
-        0x28: r8,
-        0x30: r9,
-        0x48: r12,
-        0x50: r13,
-        0x58: r14,
-        0x60: r15,
-        0x68: rdi,
-        0x70: rsi,
-        0x78: rbp,
-        0x80: rbx,
-        0x88: rdx,
-        0x98: rcx,
-        0xA0: rsp,
-        0xA8: rip,  # ret ptr
-        0xE0: src,  # fldenv ptr
-        0x1C0: 0x1F80,  # ldmxcsr
-    }, filler=b'\0', word_size=64)
-    return b
-
-def setcontext32(libc: ELF, **kwargs) -> (int, bytes):
-    """int setcontext(const ucontext_t *ucp);"""
-	pass
-
 # EXPLOIT
 # ------------------------------------------------------------------------
+def setcontext:
+    """int setcontext(const ucontext_t *ucp);"""
+    pass
+
 def xpl(**kwargs):
+    uc = UContext("amd64")
+    uc.load({
+        "R8":  0,		# 0x28
+        "R9":  0,		# 0x30
+        "R12": 0,		# 0x48
+        "R13": 0,		# 0x50
+        "R14": 0,		# 0x58
+        "R15": 0,		# 0x60
+        "RDI": 0,		# 0x68
+        "RSI": 0,		# 0x70
+        "RBP": 0,		# 0x78
+        "RBX": 0,		# 0x80
+        "RDX": 0,		# 0x88
+        "RAX": 0,		# 0x90
+        "RCX": 0,		# 0x98
+        "RSP": 0x7fffffff0000,	# 0xA0
+        "RIP": 0xdeadbeef,     	# 0xA8
+        # floating point stuff
+        "FPREGS": 0x404000,    	# 0xB0: fldenv pointer
+        "MXCSR":  0x1F80,      	# 0x1C0: default safe SSE state
+    })
+    uc.dump()
+    blob = uc.bytes   
    
     # TODO: exploit chain
 

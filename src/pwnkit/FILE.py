@@ -7,6 +7,7 @@ from typing import Dict, Iterable, List, Tuple, Union, Mapping
 from pwn import context, pack, unpack, error  # type: ignore
 
 __all__ = [
+    "_IO_FILE_I386", "_IO_FILE_AMD64",
     "IOFilePlus",
     "IO_FILE_MAPS",
 ]
