@@ -19,6 +19,7 @@ _modules: tuple[str, ...] = (
     "shellcode",
     "hashpow",
     "FILE",
+    "ucontext"
 )
 
 # --- Exports ---
@@ -58,5 +59,9 @@ if TYPE_CHECKING:
     )
     from .FILE import (
         IOFilePlus, IO_FILE_MAPS,
+    )
+    from .ucontext import (
+        FPSTATE, FPSTATE_MAPS, FPSTATE_SIZE, GREG_INDEX, MCONTEXT, MCONTEXT_MAPS, MCONTEXT_SIZE, NGREG,
+        UCONTEXT, UCONTEXT_MAPS, UCONTEXT_SIZE, UContext, find_uc_offset, fsave_env_28,
     )
 # --- TYPE_CHECKING END (auto-generated) ---

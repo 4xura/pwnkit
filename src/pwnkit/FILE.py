@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Tuple, Union
+from typing import Dict, Iterable, List, Tuple, Union, Mapping
 from pwn import context, pack, unpack, error  # type: ignore
 
 __all__ = [
@@ -141,6 +141,42 @@ class IOFilePlus:
             if name == field_name:
                 return off
         raise KeyError(f"Unknown field: {field_name}")
+
+    def load(
+        self,
+        items: Union[Mapping[Union[str, int], Union[int, bytes]],
+                     Iterable[Tuple[Union[str, int], Union[int, bytes]]]],
+        *,
+        strict: bool = True,
+        stop_on_error: bool = True,
+    ) -> None:
+        """
+        Bulk-assign fields.
+        `items` can be a dict {field: value} or an iterable of (field, value).
+        - field: str (named/alias) or int (absolute offset)
+        - value: int or bytes (size must match)
+        - strict: if False, silently ignore unknown fields; if True, raise KeyError
+        - stop_on_error: if False, continue after errors (collect them and raise AggregateError at end)
+        """
+        if isinstance(items, Mapping):
+            iterable = items.items()
+        else:
+            iterable = items
+
+        errors: list[Exception] = []
+        for k, v in iterable:
+            try:
+                self.set(k, v)
+            except Exception as e:
+                if strict:
+                    if stop_on_error:
+                        raise
+                    errors.append(e)
+                # not strict → ignore unknowns / size mismatches silently
+
+        if errors:
+            msgs = "; ".join(str(e) for e in errors)
+            raise RuntimeError(f"load() encountered {len(errors)} errors: {msgs}")
 
     # - Pretty dump print
     def _u(self, off: int, size: int) -> int:

@@ -3,16 +3,14 @@
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Tuple, Union
-from pwn import args, context, pack, unpack, error
-
-from pwnkit.FILE import Key  # type: ignore
+from typing import Dict, Iterable, List, Tuple, Union, Mapping
+from pwn import args, context, pack, unpack, error 
+from pwnkit.FILE import Key  
 
 """
 Naming:
     UCONTEXT:   ucontext_t
     MCONTEXT:   mcontext_t
-    SetContext: setcontext
 """
 
 __all__ = [
@@ -20,7 +18,7 @@ __all__ = [
     "UCONTEXT", "UCONTEXT_MAPS", "UCONTEXT_SIZE", 
     "MCONTEXT", "MCONTEXT_MAPS", "MCONTEXT_SIZE",
     "FPSTATE", "FPSTATE_MAPS", "FPSTATE_SIZE",
-    "SetContext",
+    "UContext",
     "fsave_env_28", "find_uc_offset",
 ]
 
@@ -121,8 +119,7 @@ MCONTEXT_SIZE: dict[str, int|None] = {
 }
 
 MCONTEXT_MAPS: Dict[str, Dict[int, Tuple[str, int | object]]] = {
-    "amd64": MCONTEXT["amd64"],
-    # "i386": {...}, "arm": {...}, "aarch64": {...}  # TODO
+    k: MCONTEXT[k] for k in ("amd64", "i386", "arm", "aarch64") if k in MCONTEXT
 }
 
 UCONTEXT: Dict[str, Dict[int, Tuple[str, int | object]]] = {
@@ -245,8 +242,7 @@ FPSTATE: dict[str, dict[int, tuple[str, int]]] = {
 FPSTATE_SIZE: Dict[str, int | None] = {"amd64": 0x200, "i386": None}
 
 FPSTATE_MAPS: Dict[str, Dict[int, Tuple[str, int | object]]] = {
-    "amd64": FPSTATE["amd64"],
-    # "i386": {...}, "arm": {...}, "aarch64": {...}  # TODO
+    k: FPSTATE[k] for k in ("amd64", "i386", "arm", "aarch64") if k in FPSTATE
 }
 
 # Aliases
@@ -298,10 +294,16 @@ def _resolve_key(
 
     raise KeyError(f"Unknown field: {key!r}")
 
+def find_uc_offset(arch: Arch, name: str) -> int:
+    for off, (nm, _sz) in UCONTEXT_MAPS[arch.lower()]:
+        if nm == name:
+            return off
+    raise KeyError(f"Unknown field: {name}")
+
 # Setcontext with ucontext_t
 # ---------------------------------------------------------------------------
 @dataclass
-class SetContext:
+class UContext:
     arch: Arch = field(default_factory=lambda: ("amd64") if context.bits == 64 else "i386")
     size: int = field(init=False)
     data: bytearray = field(init=False)
@@ -369,7 +371,8 @@ class SetContext:
     def set_fpu_env_ptr(self, ptr: int) -> None:
         # Points uc_mcontext.fpregs to any fxsave-compatible buffer
         self.set("uc_mcontext.fpregs", ptr)
-
+	
+	# - Aliases
     @property
     def fldenv_ptr(self) -> int:
         """
@@ -399,6 +402,293 @@ class SetContext:
     def mxcsr(self, value: int) -> None:
         self.set("__fpregs_mem.mxcsr", value)
 
+    @property
+    def r8(self) -> int:
+        return self.get("uc_mcontext.gregs.R8")
+    @r8.setter
+    def r8(self, value: int) -> None:
+        self.set("uc_mcontext.gregs.R8", value)
+
+    @property
+    def r9(self) -> int:
+        return self.get("uc_mcontext.gregs.R9")
+    @r9.setter
+    def r9(self, value: int) -> None:
+        self.set("uc_mcontext.gregs.R9", value)
+
+    @property
+    def r10(self) -> int:
+        return self.get("uc_mcontext.gregs.R10")
+    @r10.setter
+    def r10(self, value: int) -> None:
+        self.set("uc_mcontext.gregs.R10", value)
+
+    @property
+    def r11(self) -> int:
+        return self.get("uc_mcontext.gregs.R11")
+    @r11.setter
+    def r11(self, value: int) -> None:
+        self.set("uc_mcontext.gregs.R11", value)
+
+    @property
+    def r12(self) -> int:
+        return self.get("uc_mcontext.gregs.R12")
+    @r9.setter
+    def r12(self, value: int) -> None:
+        self.set("uc_mcontext.gregs.R12", value)
+
+    @property
+    def r13(self) -> int:
+        return self.get("uc_mcontext.gregs.R13")
+    @r13.setter
+    def r13(self, value: int) -> None:
+        self.set("uc_mcontext.gregs.R13", value)
+
+    @property
+    def r14(self) -> int:
+        return self.get("uc_mcontext.gregs.R14")
+    @r14.setter
+    def r14(self, value: int) -> None:
+        self.set("uc_mcontext.gregs.R14", value)
+
+    @property
+    def r15(self) -> int:
+        return self.get("uc_mcontext.gregs.R15")
+    @r15.setter
+    def r15(self, value: int) -> None:
+        self.set("uc_mcontext.gregs.R15", value)
+
+    @property
+    def rdi(self) -> int:
+        return self.get("uc_mcontext.gregs.Rdi")
+    @rdi.setter
+    def rdi(self, value: int) -> None:
+        self.set("uc_mcontext.gregs.Rdi", value)
+
+    @property
+    def rsi(self) -> int:
+        return self.get("uc_mcontext.gregs.Rsi")
+    @rsi.setter
+    def rsi(self, value: int) -> None:
+        self.set("uc_mcontext.gregs.Rsi", value)
+
+    @property
+    def rbp(self) -> int:
+        return self.get("uc_mcontext.gregs.Rbp")
+    @rbp.setter
+    def rbp(self, value: int) -> None:
+        self.set("uc_mcontext.gregs.Rbp", value)
+
+    @property
+    def rbx(self) -> int:
+        return self.get("uc_mcontext.gregs.Rbx")
+    @rbx.setter
+    def rbx(self, value: int) -> None:
+        self.set("uc_mcontext.gregs.Rbx", value)
+
+    @property
+    def rdx(self) -> int:
+        return self.get("uc_mcontext.gregs.Rdx")
+    @rdx.setter
+    def rdx(self, value: int) -> None:
+        self.set("uc_mcontext.gregs.Rdx", value)
+
+    @property
+    def rax(self) -> int:
+        return self.get("uc_mcontext.gregs.Rax")
+    @rax.setter
+    def rax(self, value: int) -> None:
+        self.set("uc_mcontext.gregs.Rax", value)
+
+    @property
+    def rcx(self) -> int:
+        return self.get("uc_mcontext.gregs.Rcx")
+    @rcx.setter
+    def rcx(self, value: int) -> None:
+        self.set("uc_mcontext.gregs.Rcx", value)
+
+    @property
+    def rsp(self) -> int:
+        return self.get("uc_mcontext.gregs.Rsp")
+    @rsp.setter
+    def rsp(self, value: int) -> None:
+        self.set("uc_mcontext.gregs.Rsp", value)
+
+    @property
+    def rip(self) -> int:
+        return self.get("uc_mcontext.gregs.Rip")
+    @rip.setter
+    def rip(self, value: int) -> None:
+        self.set("uc_mcontext.gregs.Rip", value)
+
+    @property
+    def efl(self) -> int:
+        return self.get("uc_mcontext.gregs.EFL")
+    @efl.setter
+    def efl(self, value: int) -> None:
+        self.set("uc_mcontext.gregs.EFL", value)
+
+    @property
+    def csgsfs(self) -> int:
+        return self.get("uc_mcontext.gregs.CSGSFS")
+    @csgsfs.setter
+    def csgsfs(self, value: int) -> None:
+        self.set("uc_mcontext.gregs.CSGSFS", value)
+
+    @property
+    def fpregs(self) -> int:
+        return self.get("uc_mcontext.gregs.fpregs")
+    @fpregs.setter
+    def fpregs(self, value: int) -> None:
+        self.set("uc_mcontext.gregs.fpregs", value)
+
+	# - Editors
+    def patch(self, offset: int, data: bytes) -> None:
+        """
+        Raw write at absolute offset (no name resolution).
+        """
+        if offset < 0 or offset + len(data) > self.size:
+            raise ValueError("patch out of bounds")
+        self.data[offset:offset+len(data)] = data
+
+    def load(
+        self,
+        items: Union[Mapping[Union[str, int], Union[int, bytes]],
+                     Iterable[Tuple[Union[str, int], Union[int, bytes]]]],
+        *,
+        strict: bool = True,
+        stop_on_error: bool = True,
+    ) -> None:
+        """
+        Bulk-assign fields.
+        `items` can be a dict {field: value} or an iterable of (field, value).
+        - field: str (named/alias) or int (absolute offset)
+        - value: int or bytes (size must match)
+        - strict: if False, silently ignore unknown fields; if True, raise KeyError
+        - stop_on_error: if False, continue after errors (collect them and raise AggregateError at end)
+        """
+        if isinstance(items, Mapping):
+            iterable = items.items()
+        else:
+            iterable = items
+
+        errors: list[Exception] = []
+        for k, v in iterable:
+            try:
+                self.set(k, v)
+            except Exception as e:
+                if strict:
+                    if stop_on_error:
+                        raise
+                    errors.append(e)
+                # not strict → ignore unknowns / size mismatches silently
+
+        if errors:
+            msgs = "; ".join(str(e) for e in errors)
+            raise RuntimeError(f"load() encountered {len(errors)} errors: {msgs}")
+
+    # - to/from bytes 
+    @classmethod
+    def from_bytes(cls, blob: bytes, arch: Arch | None = None) -> "UContext":
+        obj = cls(arch or ("amd64" if context.bits == 64 else "i386"))
+        if len(blob) > len(obj.data):
+            error(f"Blob too large for ucontext_t({obj.arch}): {len(blob)} > {len(obj.data)}")
+        obj.data[:len(blob)] = blob
+        return obj
+
+    def to_bytes(self) -> bytes:
+        return bytes(self.data)
+    
+    @property
+    def bytes(self) -> bytes:
+        return self.to_bytes()
+
+	# - Pretty dump print
+    def dump(
+        self,
+        title: str = "ucontext_t dump",
+        only_nonzero: bool = False,
+        show_bytes: bool = True,
+        highlight_ptrs: bool = True,
+        color: bool = True,
+        name_width: int = 28,
+    ) -> None:
+        """
+        Fixed-width columns:
+          OFF(6) | NAME(name_width) | SZ(3) | HEX(3 + 2*ptr) | DEC(20) | BYTES(full)
+        - HEX zero-padded to pointer width (16 hex on amd64).
+        - Pointers detected via PTR sentinel.
+        - 'only_nonzero' hides zero-valued fields (including zeroed blobs).
+        """
+        def paint(s: str, code: str) -> str:
+            return f"\x1b[{code}m{s}\x1b[0m" if color else s
+        def cell(text: str, width: int, align: str = ">") -> str:
+            return f"{text:{align}{width}}"
+
+        BOLD, DIM, CYAN, MAG, YEL = "1", "2", "36", "35", "33"
+
+        # widths
+        OFF_W, NAME_W, SZ_W = 6, name_width, 3
+        ptr_size = _ptr_width(self.arch)
+        HEX_DIGITS = ptr_size * 2
+        HEX_W = 3 + HEX_DIGITS   # ' 0x' + digits
+        DEC_W = 20
+
+        be = (context.endian == "big")
+        byteorder = "big" if be else "little"
+
+        # header
+        bar = "-" * max(8, len(title))
+        print(paint(title, BOLD))
+        print(bar)
+        meta = f"{paint('arch',BOLD)}: {self.arch}   {paint('ptr size',BOLD)}: {ptr_size}   {paint('size',BOLD)}: {hex(self.size)}"
+        print(meta + "\n")
+
+        hdr = "  ".join([
+            paint(cell("OFF",  OFF_W, ">"), BOLD),
+            paint(cell("NAME", NAME_W, "<"), BOLD),
+            paint(cell("SZ",   SZ_W,   ">"), BOLD),
+            paint(cell("HEX",  HEX_W,  ">"), BOLD),
+            paint(cell("DEC",  DEC_W,  ">"), BOLD),
+            *( [paint("BYTES", BOLD)] if show_bytes else [] )
+        ])
+        print(hdr)
+
+        for off in sorted(self._map.keys()):
+            name, spec = self._map[off]
+            size  = ptr_size if spec is PTR else int(spec)
+            chunk = self.data[off:off+size]
+
+            # compute value / zero-ness
+            if size <= 8:
+                uval = int.from_bytes(chunk, byteorder=byteorder, signed=False) if size else 0
+                is_zero = (uval == 0)
+                hex_raw = f" 0x{uval:0{HEX_DIGITS}x}"
+                dec_raw = str(uval)
+            else:
+                is_zero = all(b == 0 for b in chunk)
+                hex_raw = f"[{size}B]"
+                dec_raw = "-"
+
+            if only_nonzero and is_zero:
+                continue
+
+            # style name (highlight pointers, dim zero scalars)
+            is_ptr = (name in getattr(self, "_ptr_fields", ()))
+            if highlight_ptrs and is_ptr:
+                name_txt = paint(cell(name, NAME_W, "<"), BOLD)
+            else:
+                name_txt = paint(cell(name, NAME_W, "<"), DIM) if is_zero and size <= 8 else cell(name, NAME_W, "<")
+
+            off_cell = cell(f"0x{off:04x}", OFF_W, ">")
+            sz_cell  = cell(str(size), SZ_W, ">")
+            hex_cell = paint(cell(hex_raw, HEX_W, ">"), CYAN)
+            dec_cell = paint(cell(dec_raw, DEC_W, ">"), MAG)
+
+            line = "  ".join([off_cell, name_txt, sz_cell, hex_cell, dec_cell])
+            if show_bytes:
+                line += "  " + paint(chunk.hex(), YEL)
+            print(line)
 
 # Fpstate env
 # ---------------------------------------------------------------------------
@@ -413,7 +703,7 @@ def fsave_env_28(fcw=0x037F, fsw=0, ftw=0, fip=0, fcs=0, fdp=0, fds=0) -> bytes:
     Minimal, sane values:
         @FCW (control) = 0x037F (mask all, 64-bit precision default)
         @FSW, FTW = 0
-        @FIP/FCS/FDP/FDS = 0 (you’re not returning to x87 code)
+        @FIP/FCS/FDP/FDS = 0 (we’re not returning to x87 code)
         pad out to 28 bytes (0x1C)
     """
     parts = [
