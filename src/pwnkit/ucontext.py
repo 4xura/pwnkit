@@ -460,66 +460,66 @@ class UContext:
 
     @property
     def rdi(self) -> int:
-        return self.get("uc_mcontext.gregs.Rdi")
+        return self.get("uc_mcontext.gregs.RDI")
     @rdi.setter
     def rdi(self, value: int) -> None:
-        self.set("uc_mcontext.gregs.Rdi", value)
+        self.set("uc_mcontext.gregs.RDI", value)
 
     @property
     def rsi(self) -> int:
-        return self.get("uc_mcontext.gregs.Rsi")
+        return self.get("uc_mcontext.gregs.RSI")
     @rsi.setter
     def rsi(self, value: int) -> None:
-        self.set("uc_mcontext.gregs.Rsi", value)
+        self.set("uc_mcontext.gregs.RSI", value)
 
     @property
     def rbp(self) -> int:
-        return self.get("uc_mcontext.gregs.Rbp")
+        return self.get("uc_mcontext.gregs.RBP")
     @rbp.setter
     def rbp(self, value: int) -> None:
-        self.set("uc_mcontext.gregs.Rbp", value)
+        self.set("uc_mcontext.gregs.RBP", value)
 
     @property
     def rbx(self) -> int:
-        return self.get("uc_mcontext.gregs.Rbx")
+        return self.get("uc_mcontext.gregs.RBX")
     @rbx.setter
     def rbx(self, value: int) -> None:
-        self.set("uc_mcontext.gregs.Rbx", value)
+        self.set("uc_mcontext.gregs.RBX", value)
 
     @property
     def rdx(self) -> int:
-        return self.get("uc_mcontext.gregs.Rdx")
+        return self.get("uc_mcontext.gregs.RDX")
     @rdx.setter
     def rdx(self, value: int) -> None:
-        self.set("uc_mcontext.gregs.Rdx", value)
+        self.set("uc_mcontext.gregs.RDX", value)
 
     @property
     def rax(self) -> int:
-        return self.get("uc_mcontext.gregs.Rax")
+        return self.get("uc_mcontext.gregs.RAX")
     @rax.setter
     def rax(self, value: int) -> None:
-        self.set("uc_mcontext.gregs.Rax", value)
+        self.set("uc_mcontext.gregs.RAX", value)
 
     @property
     def rcx(self) -> int:
-        return self.get("uc_mcontext.gregs.Rcx")
+        return self.get("uc_mcontext.gregs.RCX")
     @rcx.setter
     def rcx(self, value: int) -> None:
-        self.set("uc_mcontext.gregs.Rcx", value)
+        self.set("uc_mcontext.gregs.RCX", value)
 
     @property
     def rsp(self) -> int:
-        return self.get("uc_mcontext.gregs.Rsp")
+        return self.get("uc_mcontext.gregs.RSP")
     @rsp.setter
     def rsp(self, value: int) -> None:
-        self.set("uc_mcontext.gregs.Rsp", value)
+        self.set("uc_mcontext.gregs.RSP", value)
 
     @property
     def rip(self) -> int:
-        return self.get("uc_mcontext.gregs.Rip")
+        return self.get("uc_mcontext.gregs.RIP")
     @rip.setter
     def rip(self, value: int) -> None:
-        self.set("uc_mcontext.gregs.Rip", value)
+        self.set("uc_mcontext.gregs.RIP", value)
 
     @property
     def efl(self) -> int:

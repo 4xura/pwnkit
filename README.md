@@ -432,6 +432,54 @@ f2 = IOFilePlus.from_bytes(blob=snapshot, arch="amd64")
 
 > For example, we can dump an `IO_FILE_plus` structure data via pwndbg's `dump memory` command
 
+#### Ucontext Buffering
+
+We are not here to discuss how to exploit with the `ucontext_t` buffer in glibc. This involves:
+
+```c
+extern int setcontext (const ucontext_t *__ucp)
+```
+
+Usually we leverage its runtime gadgets in `setcontext+61` ([example](https://4xura.com/binex/orw-open-read-write-pwn-a-sandbox-using-magic-gadgets/#toc-head-7)) or `setcontext+32` ([example](https://4xura.com/binex/pwn-got-hijack-libcs-internal-got-plt-as-rce-primitives/#toc-head-22))
+
+Using `pwnkit` we can quickly initiate a `ucontext_t` struct buffer:
+
+```py
+uc = UContext("amd64")          # defaults to amd64 if context.bits==64 anyway
+print(hex(uc.size))             # 0x3c8
+```
+
+Set a few GPRs + RIP/RSP (aliases or full names):
+
+```py
+# full dotted name (case sensitive)
+uc.set("uc_mcontext.gregs.RIP", 0x4011d0)         
+
+# sugars (case sensitive)
+uc.set_reg("rdi", 0x1337)                         
+uc.set_stack(
+    sp    = 0x7fffffff0000,
+    size  = 0x1111,
+    flags = 0xdeadbeef
+)    
+
+# aliases (case insensitive)
+uc.set("RSP", 0x7fffffff0000)                     # field name alias 
+uc.rsi = 0x2222								      # property alias 
+
+# same via bulk
+uc.load({
+    "RAX": 0, "RBX": 0, "RCX": 0, "RDX": 0,
+    # "RSI": 0x2222,
+    "efl": 0x202,                                 # (case insensitive)
+})
+uc.dump(only_nonzero=True)
+```
+
+![ucontext_set](images/ucontext_set.jpg)
+
+
+
 #### Others
 
 More modules are included in the `pwnkit` source, but some of them are currently for personal scripting conventions, or are under beta tests. You can add your own modules under `src/pwnkit`, then embed them into `src/pwnkit/__init__.py`. 
