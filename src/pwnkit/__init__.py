@@ -17,9 +17,10 @@ _modules: tuple[str, ...] = (
     "utils",
     "ctx",
     "shellcode",
-    "hashpow",
     "FILE",
-    "ucontext"
+    "ucontext",
+    "hashpow",
+    "rc4",
 )
 
 # --- Exports ---
@@ -54,14 +55,17 @@ if TYPE_CHECKING:
         Arch, SHELLCODES, Shellcode, ShellcodeBuilder, ShellcodeReigstry, build_sockaddr_in,
         hex_shellcode, list_shellcodes,
     )
-    from .hashpow import (
-        BruteForcer, solve_pow, solve_pow_mt,
-    )
     from .FILE import (
         IOFilePlus, IO_FILE_MAPS, _IO_FILE_AMD64, _IO_FILE_I386,
     )
     from .ucontext import (
         FPSTATE, FPSTATE_MAPS, FPSTATE_SIZE, GREG_INDEX, MCONTEXT, MCONTEXT_MAPS, MCONTEXT_SIZE, NGREG,
         UCONTEXT, UCONTEXT_MAPS, UCONTEXT_SIZE, UContext, find_uc_offset, fsave_env_28,
+    )
+    from .hashpow import (
+        BruteForcer, solve_pow, solve_pow_mt,
+    )
+    from .rc4 import (
+        rc4, rc4_decrypt, rc4_encrypt,
     )
 # --- TYPE_CHECKING END (auto-generated) ---
