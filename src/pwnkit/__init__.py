@@ -21,6 +21,7 @@ _modules: tuple[str, ...] = (
     "ucontext",
     "hashpow",
     "rc4",
+    "decors",
 )
 
 # --- Exports ---

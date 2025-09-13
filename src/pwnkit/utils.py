@@ -1,21 +1,60 @@
 from __future__ import annotations
 import inspect
+import binascii
 from pwn import success  
-from typing import Literal, Optional, Tuple, Sequence
+from typing import Literal, Optional, Tuple, Sequence, Union
+from urllib.parse import quote, quote_plus, unquote, urlencode
 import logging, sys, os
 
 __all__ = [
         "leak", "pa",
-        "itoa",
+        "itoa", "i2a", "bytex", "hex2b", "b2hex", "url_qs",
         "init_pr",
         "logger", "pr_debug", "pr_info", "pr_warn", "pr_error", "pr_critical", "pr_exception",
         "parse_argv",
         ]
 
-# Data format transform
+# Data Transformers
 # ------------------------------------------------------------------------
 def itoa(a: int) -> bytes:
     return str(a).encode()
+
+i2a = itoa
+
+def bytex(x) -> bytes:
+    if isinstance(x, bytes): return x
+    if isinstance(x, bytearray): return bytes(x)
+    if isinstance(x, memoryview): return x.tobytes()
+    if isinstance(x, str): return x.encode()
+    if isinstance(x, int): return str(x).encode()  # like itoa()
+    raise TypeError(f"cannot bytes(): {type(x)}")
+
+def hex2b(s: Union[str, bytes]) -> bytes:
+    if isinstance(s, (bytes, bytearray)): s = s.decode()
+    s = s.strip().lower()
+    if s.startswith('0x'): s = s[2:]
+    s = re.sub(r'[^0-9a-f]', '', s)  # drop spaces/colons
+    if len(s) % 2: s = '0' + s
+    try: return binascii.unhexlify(s)
+    except binascii.Error as e: raise ValueError(f"bad hex: {e}")
+
+def b2hex(b: Union[bytes, bytearray, memoryview]) -> str:
+    """
+    b2hex(b"aaa") # '0x616161'
+    """
+    hexstr = "0x" + binascii.hexlify(ensure_bytes(b)).decode()
+    return hexstr
+
+def url_qs(params, *, rfc3986=True, doseq=True):
+    """
+    dict / list[tuples] -> query string.
+    rfc3986=True: spaces -> %20 ; False: spaces -> '+'
+
+    e.g.,
+    url_qs({"q": "a b", "tag": ["x/y", "z"]})   # "q=a%20b&tag=x%2Fy&tag=z"
+    """
+    qv = quote if rfc3986 else quote_plus
+    return urlencode(params, doseq=doseq, quote_via=qv, safe="-._~")
 
 # Leak (print) memory addresses
 # ------------------------------------------------------------------------
@@ -37,8 +76,8 @@ def leak(addr: int) -> None:
     except Exception:
         pass
 
-    c_desc = f"\033[1;31m{desc:<16}\033[0m"		# red
-    c_addr = f"\033[1;33m{addr:#x}\033[0m"		# yellow
+    c_desc = f"\033[1;31m{desc:<16}\033[0m"     # red
+    c_addr = f"\033[1;33m{addr:#x}\033[0m"      # yellow
     success(f"Leak {c_desc:<16} addr: {c_addr}")
 
 pa = leak
@@ -81,7 +120,7 @@ def init_pr(
     """
     lvl = getattr(logging, level.upper(), logging.INFO)
 
-    logger.propagate = False	# avoids duplicate messages
+    logger.propagate = False    # avoids duplicate messages
     logger.setLevel(lvl)
     logger.handlers = [h for h in logger.handlers if not isinstance(h, logging.StreamHandler)]
 
@@ -90,7 +129,7 @@ def init_pr(
     h.setLevel(lvl)  # optional
     logger.addHandler(h)
 
-    plog = logging.getLogger("pwnlib")	# Align pwntools' logging level
+    plog = logging.getLogger("pwnlib")  # Align pwntools' logging level
     if lvl <= logging.DEBUG:
         plog.setLevel(logging.DEBUG)
     plog.propagate = False
@@ -127,9 +166,9 @@ def _usage(argv: Sequence[str]) -> Tuple[None, None]:
 # Parse argv (ip, host)
 # ------------------------------------------------------------------------
 def parse_argv(argv: Sequence[str],
-				default_host: Optional[str] = None,
-				default_port: Optional[int] = None
-				) -> Tuple[Optional[str], Optional[int]]:
+                default_host: Optional[str] = None,
+                default_port: Optional[int] = None
+                ) -> Tuple[Optional[str], Optional[int]]:
     """
     Accepts:
       []
