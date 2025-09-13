@@ -707,6 +707,58 @@ uc.load([
 blob = uc.bytes
 ```
 
+#### Function Decorators
+
+See examples in [src/pwnkit/decors.py](https://github.com/4xura/pwnkit/blob/main/src/pwnkit/decors.py):
+```python
+# - Coerce funtion arguments with transformers
+#   e.g., for a heap exploitation menu I/O:
+@argx(by_name={"n":itoa})
+def menu(n: int):
+    sla(b"choice: ", opt)       # convert int to string bytes
+
+@argx(by_type={int:itoa})
+def alloc(idx: int, sz: int, ctx: bytes): 
+    menu(1)                     # convert int to string bytes
+    sla(b"index: ", idx)        # convert int to string bytes
+    sla(b"size: ", sz)          # convert int to string bytes
+    sla(b"content: ", ctx)		# this is not affected
+
+
+# - Print the fully-qualified function name and raw args/kwargs
+#   this can be helpful in fuzzing tasks, that we know when func is called
+@pr_call
+def fuzz(x, y=2):
+	return x ** y
+
+fuzz(7, y=5)	# call __main__.fuzz args=(7,) kwargs={'y': 5}
+
+
+# - Count how many times a function is called 
+#   exposes .calls and .reset()
+@counter()
+def f(x): return x*x
+
+f(2); f(3)
+print(f.calls)  # 2
+f.reset()
+print(f.calls)  # 0
+
+
+# - Print how long the call took (ms)
+@timer
+def fuzz(x, y=2):
+	return x ** y
+
+fuzz(7, y=5)	# __main__.fuzz took 0.001 ms
+
+...
+
+```
+
+
+
+
 #### Others
 
 More modules are included in the `pwnkit` source, but some of them are currently for personal scripting conventions, or are under beta tests. You can add your own modules under `src/pwnkit`, then embed them into `src/pwnkit/__init__.py`. 
