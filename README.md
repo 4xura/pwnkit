@@ -715,13 +715,13 @@ See examples in [src/pwnkit/decors.py](https://github.com/4xura/pwnkit/blob/main
 #   e.g., for a heap exploitation menu I/O:
 @argx(by_name={"n":itoa})
 def menu(n: int):
-    sla(b"choice: ", opt)       # convert int to string bytes
+    sla(b"choice: ", opt)       # convert arg `n` to string bytes
 
 @argx(by_type={int:itoa})
 def alloc(idx: int, sz: int, ctx: bytes): 
-    menu(1)                     # convert int to string bytes
-    sla(b"index: ", idx)        # convert int to string bytes
-    sla(b"size: ", sz)          # convert int to string bytes
+    menu(1)                     # convert 1 to b"1"
+    sla(b"index: ", idx)        # convert integer arg `idx` to string bytes
+    sla(b"size: ", sz)          # convert integer arg `sz` to string bytes
     sla(b"content: ", ctx)		# this is not affected
 
 
@@ -736,13 +736,24 @@ fuzz(7, y=5)	# call __main__.fuzz args=(7,) kwargs={'y': 5}
 
 # - Count how many times a function is called 
 #   exposes .calls and .reset()
-@counter()
-def f(x): return x*x
+@counter
+def f(a, b): 
+    print(f"{a}+{b}={a+b}")
 
-f(2); f(3)
+f(1,2)			# Call 1 of f ... 1+2=3
+f(5,5)			# Call 2 of f ... 5+5=10
 print(f.calls)  # 2
 f.reset()
 print(f.calls)  # 0
+
+
+# - Sleep before and after the call (seconds).
+@sleepx(before=0.10, after=0.10)
+def poke():
+	...
+
+@sleepx(before=0.2)
+async def task():
 
 
 # - Print how long the call took (ms)

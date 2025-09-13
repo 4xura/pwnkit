@@ -84,41 +84,39 @@ def pr_call(func):
         return func(*args, **kwargs)
     return wrapper
 
-def counter(show: bool = True):
+def counter(func):
     """
     Count how many times a function is called. Exposes .calls and .reset().
 
     e.g.,
-        @counter()
-        def f(x): return x*x
+        @counter
+        def f(a, b): 
+            print(f"{a}+{b}={a+b}")
 
-        f(2); f(3)
+        f(1,2)          # Call 1 of f ... 1+2=3
+        f(5,5)          # Call 2 of f ... 5+5=10
         print(f.calls)  # 2
         f.reset()
         print(f.calls)  # 0
     """
-    def deco(func):
-        if inspect.iscoroutinefunction(func):
-            @wraps(func)
-            async def aw(*args, **kwargs):
-                aw.calls += 1
-                if show:
-                    info(f"Call {aw.calls} of {func.__name__}")
-                return await func(*args, **kwargs)
-            aw.calls = 0
-            aw.reset = lambda: setattr(aw, "calls", 0)
-            return aw
-
+    if inspect.iscoroutinefunction(func):
         @wraps(func)
-        def w(*args, **kwargs):
-            w.calls += 1
-            if show:
-                info(f"Call {w.calls} of {func.__name__}")
-            return func(*args, **kwargs)
-        w.calls = 0
-        w.reset = lambda: setattr(w, "calls", 0)
-        return w
-    return deco
+        async def aw(*args, **kwargs):
+            aw.calls += 1
+            print(f"Call {aw.calls} of {func.__name__}")
+            return await func(*args, **kwargs)
+        aw.calls = 0
+        aw.reset = lambda: setattr(aw, "calls", 0)
+        return aw
+
+    @wraps(func)
+    def w(*args, **kwargs):
+        w.calls += 1
+        print(f"Call {w.calls} of {func.__name__}")
+        return func(*args, **kwargs)
+    w.calls = 0
+    w.reset = lambda: setattr(w, "calls", 0)
+    return w
 
 def timer(func):
     """

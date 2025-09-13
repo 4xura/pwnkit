@@ -47,10 +47,11 @@ init_pr("debug", "%(asctime)s - %(levelname)s - %(message)s", "%H:%M:%S")
 
 # HEAP 
 # ------------------------------------------------------------------------
+@argx(by_name={"n":itoa})
 def menu(n: int):
-    opt = itoa(n)
     pass
 
+@argx(by_type={int:itoa})
 def alloc():
     pass
 
