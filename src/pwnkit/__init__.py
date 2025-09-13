@@ -48,8 +48,8 @@ if TYPE_CHECKING:
     from .rop import ROPGadgets
     from .gdbx import ga
     from .utils import (
-        init_pr, itoa, leak, logger, pa, parse_argv, pr_critical, pr_debug, pr_error, pr_exception,
-        pr_info, pr_warn,
+        b2hex, bytex, hex2b, i2a, init_pr, itoa, leak, logger, pa, parse_argv, pr_critical, pr_debug,
+        pr_error, pr_exception, pr_info, pr_warn, url_qs,
     )
     from .ctx import Context
     from .shellcode import (
@@ -68,5 +68,8 @@ if TYPE_CHECKING:
     )
     from .rc4 import (
         rc4, rc4_decrypt, rc4_encrypt,
+    )
+    from .decors import (
+        argx, pr_call, sleepx, timer,
     )
 # --- TYPE_CHECKING END (auto-generated) ---
