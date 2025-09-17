@@ -812,9 +812,9 @@ result = attempt_login()
 
 
 # 4) Parallel bruteforce (threads)
-    @bruteforcer(inputs=((pw,) for pw in candidates), until=lambda r: r is True, parallel=8)
-    def attempt_login(password):
-        return fake_try_login(password)
+@bruteforcer(inputs=((pw,) for pw in candidates), until=lambda r: r is True, parallel=8)
+def attempt_login(password):
+    return fake_try_login(password)
 ```
 
 #### Others
