@@ -51,7 +51,7 @@ def setcontext:
     """int setcontext(const ucontext_t *ucp);"""
     pass
 
-def xpl(**kwargs):
+def xpl(*args, **kwargs):
     uc = UContext("amd64")
     uc.load({
         "R8":  0,		# 0x28

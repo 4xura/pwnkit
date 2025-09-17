@@ -709,7 +709,10 @@ blob = uc.bytes
 
 #### Function Decorators
 
-See examples in [src/pwnkit/decors.py](https://github.com/4xura/pwnkit/blob/main/src/pwnkit/decors.py):
+See examples in [src/pwnkit/decors.py](https://github.com/4xura/pwnkit/blob/main/src/pwnkit/decors.py).
+
+##### Common function helpers
+
 ```python
 # - Coerce funtion arguments with transformers
 #   e.g., for a heap exploitation menu I/O:
@@ -766,9 +769,53 @@ fuzz(7, y=5)	# __main__.fuzz took 0.001 ms
 ...
 
 ```
+##### Bruteforcer
+
+When we need brute forcing (TODO: improve this decorator!):
+
+```python
+# 1) Simple repeat n times (sequential)
+@bruteforcer(times=5)
+def probe():
+    print("probing")
+    return False
+
+# returns [False, False, False, False, False]
+res = probe()
 
 
+# 2) Pass attempt index to function (useful for permutations)
+@bruteforcer(times=3, pass_index=True)
+def try_pin(i):
+    print("attempt", i)
 
+try_pin()
+# prints:
+# attempt 0
+# attempt 1
+# attempt 2
+
+
+# 3) Use a list of candidate inputs (typical bruteforce passwords)
+candidates = ["admin", "1234", "password", "letmein"]
+
+# build inputs as iterable of (args, kwargs) pairs
+inputs = (( (pw,), {} ) for pw in candidates)
+
+@bruteforcer(inputs=inputs, until=lambda r: r is True)
+def attempt_login(password):
+    # attempt_login returns True on success, False/None on failure
+    return fake_try_login(password)
+
+result = attempt_login()
+# result will be True (stops early) or None if no candidate worked
+
+
+# 4) Parallel bruteforce (threads)
+    @bruteforcer(inputs=((pw,) for pw in candidates), until=lambda r: r is True, parallel=8)
+    def attempt_login(password):
+        return fake_try_login(password)
+```
 
 #### Others
 

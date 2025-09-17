@@ -95,7 +95,7 @@ def setcontext32(libc: ELF, **kwargs) -> (int, bytes):
 
 # EXPLOIT
 # ------------------------------------------------------------------------
-def xpl(**kwargs):
+def xpl(*args, **kwargs):
    
     # TODO: exploit chain
 

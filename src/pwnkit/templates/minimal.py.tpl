@@ -16,7 +16,7 @@ Context(arch={arch!r}, os={os!r}, endian={endian!r}, log_level={log!r}, terminal
 io  = Tube(file_path=BIN_PATH, libc_path=LIBC_PATH, host=host, port=port, env={{}}).init().alias()
 set_global_io(io)	# s, sa, sl, sla, r, ru, uu64, g, gp
 
-def xpl(**kwargs):
+def xpl(*args, **kwargs):
    
     # TODO: exploit chain
 

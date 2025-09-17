@@ -212,3 +212,6 @@ clean.sh
 build.sh
 tag_release.sh
 src/pwnkit/_version.py
+offline_prep.sh
+wheelhouse
+kit.tgz

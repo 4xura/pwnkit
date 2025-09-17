@@ -4,8 +4,9 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import Callable, Iterable, List, Optional, Tuple, Dict, Type
+from typing import Callable, Iterable, List, Optional, Tuple, Dict, Type, Any
 from inspect import signature, Parameter, iscoroutinefunction
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pwn import logging
 import time, os, asyncio
 
@@ -13,6 +14,7 @@ __all__ = [
         "argx",
         "pr_call", "timer",
         "sleepx",
+        "bruteforcer",
         ]
 
 # Function Arguments 
@@ -171,4 +173,172 @@ def sleepx(*, before: float = 0.0, after: float = 0.0):
             finally:
                 if after: time.sleep(after)
         return w
+    return deco
+
+# Brute Force
+# ------------------------------------------------------------------------
+def bruteforcer(
+    *,
+    times: Optional[int] = None,
+    inputs: Optional[Iterable[Tuple[tuple, dict]]] = None,
+    pass_index: bool = False,
+    until: Optional[Callable[[Any], bool]] = None,
+    threads: int = 1,
+    delay: float = 0.0,
+):
+    """
+    Run the decorated function multiple times in a bruteforce style.
+
+    @times:
+        If `inputs` is None, run the function `times` times.
+        If both are None, raises ValueError.
+    @inputs:
+        Iterable of (args_tuple, kwargs_dict). If supplied, `times` is ignored.
+        For convenience we can also pass an iterable of single values; it'll be normalised.
+    @pass_index:
+        If True, the wrapper will inject an extra positional argument as the attempt index
+        (0-based) before the supplied args.
+    @until:
+        Callable(result) -> bool. If provided, stop early and return the first result
+        for which until(result) is truthy.
+    @threads:
+        Number of worker threads. 1 = run sequentially. >1 enables concurrency.
+    @delay:
+        Seconds to sleep between sequential attempts (ignored for threads>1).
+
+    If `until` is provided: the first result for which `until(result)` is True, or None.
+    Otherwise: list of results from all attempts (in order if sequential; unspecified order if threads).
+
+    Usage examples:
+    ---------------
+    1) Simple repeat n times (sequential)
+        @bruteforcer(times=5)
+        def probe():
+            print("probing")
+            return False
+
+        # returns [False, False, False, False, False]
+        res = probe()
+
+    2) Pass attempt index to function (useful for permutations)
+        @bruteforcer(times=3, pass_index=True)
+        def try_pin(i):
+            print("attempt", i)
+
+        try_pin()
+        # prints:
+        # attempt 0
+        # attempt 1
+        # attempt 2
+
+    3) Use a list of candidate inputs (typical bruteforce passwords)
+        candidates = ["admin", "1234", "password", "letmein"]
+
+        # build inputs as iterable of (args, kwargs) pairs
+        inputs = (( (pw,), {} ) for pw in candidates)
+
+        @bruteforcer(inputs=inputs, until=lambda r: r is True)
+        def attempt_login(password):
+            # attempt_login returns True on success, False/None on failure
+            return fake_try_login(password)
+
+        result = attempt_login()
+        # result will be True (stops early) or None if no candidate worked
+
+    4) Parallel bruteforce (threads)
+        @bruteforcer(inputs=((pw,) for pw in candidates), until=lambda r: r is True, parallel=8)
+        def attempt_login(password):
+            return fake_try_login(password)
+    """
+
+    if inputs is None and times is None:
+        raise ValueError("Either 'times' or 'inputs' must be provided")
+
+    def _normalise_inputs():
+        # Yield normalized (args, kwargs) pairs.
+        if inputs is not None:
+            for item in inputs:
+                if isinstance(item, tuple) and len(item) == 2 and isinstance(item[1], dict):
+                    yield item
+                else:
+                    # treat single value as single positional arg
+                    yield ( (item,), {} )
+        else:
+            for i in range(times):
+                yield ( (), {} )
+
+    def deco(func):
+        @wraps(func)
+        def wrapper(*call_args, **call_kwargs):
+            # Two modes:
+            # - if inputs provided: ignore call_args/call_kwargs and use inputs.
+            # - otherwise, if times provided: call func(*call_args, **call_kwargs) repeatedly.
+            iterator = _normalise_inputs()
+
+            # Sequential execution
+            if threads <= 1:
+                results = []
+                for idx, (base_args, base_kwargs) in enumerate(iterator):
+                    # Compose args
+                    args = ()
+                    if pass_index:
+                        args = (idx,) + tuple(base_args)
+                    else:
+                        args = tuple(base_args)
+
+                    # If caller supplied args/kwargs to wrapper, merge them (useful for partial context)
+                    final_args = call_args + args
+                    final_kwargs = {**base_kwargs, **call_kwargs}
+
+                    res = func(*final_args, **final_kwargs)
+                    results.append(res)
+
+                    if until is not None and until(res):
+                        return res
+                    if delay:
+                        time.sleep(delay)
+
+                return results
+
+            # Parallel execution
+            else:
+                results = []
+                with ThreadPoolExecutor(max_workers=threads) as ex:
+                    futures = {}
+                    for idx, (base_args, base_kwargs) in enumerate(iterator):
+                        if pass_index:
+                            args = (idx,) + tuple(base_args)
+                        else:
+                            args = tuple(base_args)
+
+                        final_args = call_args + args
+                        final_kwargs = {**base_kwargs, **call_kwargs}
+                        fut = ex.submit(func, *final_args, **final_kwargs)
+                        futures[fut] = idx
+
+                    # If we have `until`, we want to stop as soon as one future matches.
+                    if until is not None:
+                        for fut in as_completed(futures):
+                            try:
+                                res = fut.result()
+                            except Exception as e:
+                                results.append(e)
+                                continue
+
+                            results.append(res)
+                            if until(res):
+                                for pending in futures:
+                                    if not pending.done():
+                                        pending.cancel()
+                                return res
+                        return None
+                    else:
+                        for fut in as_completed(futures):
+                            try:
+                                results.append(fut.result())
+                            except Exception as e:
+                                results.append(e)
+                        return results
+
+        return wrapper
     return deco

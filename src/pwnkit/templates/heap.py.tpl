@@ -47,12 +47,12 @@ init_pr("debug", "%(asctime)s - %(levelname)s - %(message)s", "%H:%M:%S")
 
 # HEAP 
 # ------------------------------------------------------------------------
-@argx(by_name={"n":itoa})
+@argx(by_name={{"n":itoa}})
 def menu(n: int):
     pass
 
-@argx(by_type={int:itoa})
-def alloc():
+@argx(by_type={{int:itoa}})
+def allo():
     pass
 
 def free():
@@ -66,7 +66,7 @@ def show():
 
 # EXPLOIT
 # ------------------------------------------------------------------------
-def xpl(**kwargs):
+def xpl(*args, **kwargs):
    
     # TODO: exploit chain
 
