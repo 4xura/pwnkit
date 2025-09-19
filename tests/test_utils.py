@@ -44,7 +44,7 @@ def test_leak_prints_with_var_name_and_hex(monkeypatch):
     buf = 0xdeadbeefcafebabe
     leak(buf)
     plain = [_deansi(m) for m in messages]
-    assert any("Leak buf" in m for m in plain)
+    assert any("Leaked address of buf " in m for m in plain)
     assert any(re.search(HEX, m) for m in plain)
 
 def test_pa_alias_matches_leak(monkeypatch):
@@ -54,7 +54,7 @@ def test_pa_alias_matches_leak(monkeypatch):
     val = 0x4141414142424242
     pa(val)
     plain = [_deansi(m) for m in messages]
-    assert any("Leak val" in m for m in plain)
+    assert any("Leaked address of buf " in m for m in plain)
     assert any(re.search(HEX, m) for m in plain)
 
 
