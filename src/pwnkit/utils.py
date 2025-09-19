@@ -1,17 +1,17 @@
 from __future__ import annotations
-import inspect
-import binascii
 from pwn import success  
-from typing import Literal, Optional, Tuple, Sequence, Union
+from typing import Any, Literal, Optional, Tuple, Sequence, Union
 from urllib.parse import quote, quote_plus, unquote, urlencode
-import logging, sys, os
+import binascii, inspect, logging, sys, os
 
 __all__ = [
-        "leak", "pa",
+        "print_addr", "leak", "pa",
+        "print_data", "pd",
         "itoa", "i2a", "bytex", "hex2b", "b2hex", "url_qs",
         "init_pr",
         "logger", "pr_debug", "pr_info", "pr_warn", "pr_error", "pr_critical", "pr_exception",
         "parse_argv",
+        "colorize",
         ]
 
 # Data Transformers
@@ -56,31 +56,161 @@ def url_qs(params, *, rfc3986=True, doseq=True):
     qv = quote if rfc3986 else quote_plus
     return urlencode(params, doseq=doseq, quote_via=qv, safe="-._~")
 
-# Leak (print) memory addresses
+# Pretty prints
 # ------------------------------------------------------------------------
-def leak(addr: int) -> None:
+# - Print memory address in hex given a symbol name 
+def print_addr(addr: int, *, name: Optional[str] = None, depth: int = 2) -> None:
     """
-    Pretty-print a leaked address with variable name if possible.
+    Pretty-print a leaked address with variable name auto extracted.
 
-    Example:
-        buf = 0xdeadbeef
-        leak(buf)  # prints "Leak buf addr: 0xdeadbeef"
+    Examples:
+        backdoor = 0xdeadbeef
+        print_addr(backdoor)        # prints    "Leaked address of backdoor: 0xdeadbeef"
+        leak(buf, name="gooddoor")  # override: "Leaked address of gooddoor: 0xdeadbeef"
+        pa(buf, depth: 4)           # if varanme not found in frame, better keep default
     """
-    frame = inspect.currentframe().f_back
-    desc = "unknown"
+    # allow explicit override
+    if not isinstance(addr, int):
+        raise TypeError("leak() expects an int address")
+    desc = name if name is not None else _get_caller_varname(addr, depth=depth)
+    c_desc = f"\033[1;31m{desc}\033[0m"     # red
+    c_addr = f"\033[1;33m{addr:#x}\033[0m"  # yellow
+    text = f"Leaked address of {c_desc}: {c_addr}"
+
     try:
-        # Try to find which local variable equals this address
-        variables = {k: v for k, v in frame.f_locals.items() if isinstance(v, int) and v == addr}
-        if variables:
-            desc = next(iter(variables.keys()))
+        success(text)
+    except NameError:
+        print(f"[+] {text}")
+
+# - Print data with various data format dumps
+def _pad_hex(b: bytes) -> str:
+    return "0x" + binascii.hexlify(b).decode().rjust(len(b)*2, "0")
+
+def _qword_hexdump(buf: bytes):
+    if not buf:
+        return ["(empty)"]
+    out = ["[*] hexdump:"]
+    for off in range(0, len(buf), 16):
+        chunk = buf[off:off+16]
+        page, offset = (off // 0x10000), (off % 0x10000)
+        label = f"{page:02x}:{offset:04x}"
+        q1, q2 = chunk[0:8], chunk[8:16]
+        q1_hex = _pad_hex(q1.ljust(8, b"\x00"))
+        q2_hex = _pad_hex(q2.ljust(8, b"\x00")) if q2 else ""
+        ascii_col = "".join(chr(b) if 32 <= b < 127 else "." for b in chunk)
+        if q2_hex:
+            out.append(f"{label}│ {q1_hex}  {q2_hex} │ {ascii_col}")
+        else:
+            out.append(f"{label}│ {q1_hex}                  │ {ascii_col}")
+    return out
+
+def _byte2bits(buf: bytes) -> str:
+    return "".join(f"{b:08b}" for b in buf) if buf else "(empty)"
+
+def _byte2oct(buf: bytes) -> str:
+    return "".join(f"\\{b:03o}" for b in buf) if buf else "(empty)"
+
+def _u_bytes(x: int, w: int) -> bytes:
+    mask = (1 << (w*8)) - 1
+    return (x & mask).to_bytes(w, "little", signed=False)
+
+def _s_bytes(x: int, w: int) -> bytes:
+    return int.to_bytes(x, w, "little", signed=True)
+
+def print_data(x, name: Optional[str] = None, *,
+               int_widths: Optional[list] = None,
+               encoding: str = "utf-8",
+               errors: str = "replace"):
+    """
+    print_data(x, name=None, encoding='utf-8', errors='replace')
+
+    - For str: show type, repr, len (chars), bytes (len of encoded bytes),
+               bin/oct of encoded bytes, per-char codepoints + utf8 bytes, then hexdump
+    - For bytes: as before (len, bin, oct, hexdump)
+    - For int: bin, oct, dec, hex, then [1/2/4/8B] LE/BE with numeric interpretations
+    """
+    label = name if name is not None else _get_caller_varname(x)
+    title = f"[+] Print data: {label}"
+    # title = f"[+] Print data: "
+    print(title)
+    tname = type(x).__name__
+    print(f"    type : {tname}")
+    print(f"    repr : {repr(x)}")
+
+    # - STR: treat as Unicode text, encode to bytes with chosen encoding
+    if isinstance(x, str):
+        chars = len(x)
+        b = x.encode(encoding, errors=errors)
+        print(f"    len  : {chars}")
+        print(f"    bytes: {len(b)}")
+        # binary / octal of the encoded bytes
+        print(f"    bin  : {_byte2bits(b)}")
+        print(f"    oct  : {_byte2oct(b)}")
+        # per-character table
+        if chars > 0:
+            print("[*] chars:")
+            for i, ch in enumerate(x):
+                cp = f"U+{ord(ch):04X}"
+                utf8_hex = binascii.hexlify(ch.encode(encoding, errors=errors)).decode()
+                # show char repr, codepoint, and hex of its encoded bytes
+                print(f"  [{i}] {repr(ch)} {cp} utf8=0x{utf8_hex}")
+        # hexdump of the encoded bytes last
+        for line in _qword_hexdump(b):
+            print(line)
+        return
+
+    # - BYTES / bytearray / memoryview
+    if isinstance(x, (bytes, bytearray, memoryview)):
+        b = bytes(x)
+        print(f"    len  : {len(b)}")
+        print(f"    bin  : {_byte2bits(b)}")
+        print(f"    oct  : {_byte2oct(b)}")
+        for line in _qword_hexdump(b):
+            print(line)
+        return
+
+    # - INT
+    if isinstance(x, int):
+        widths = [1, 2, 4, 8] if int_widths is None else sorted(set(int_widths))
+        print(f"    bin  : {bin(x)}")
+        print(f"    oct  : {oct(x)}")
+        print(f"    dec  : {x}")
+        print(f"    hex  : {hex(x)}")
+        print("[*] hexdump")
+        for w in widths:
+            ule = _u_bytes(x, w); ube = ule[::-1]
+            u_le_hex = _pad_hex(ule); u_be_hex = _pad_hex(ube)
+            u_le_val = int.from_bytes(ule, "little", signed=False)
+            u_be_val = int.from_bytes(ube, "big", signed=False)
+            try:
+                sle = _s_bytes(x, w); sbe = sle[::-1]
+                s_le_hex = _pad_hex(sle); s_be_hex = _pad_hex(sbe)
+                s_le_val = int.from_bytes(sle, "little", signed=True)
+                s_be_val = int.from_bytes(sbe, "big", signed=True)
+            except OverflowError:
+                s_le_hex = s_be_hex = "signed:overflow"
+                s_le_val = s_be_val = "overflow"
+            print(f"  [{w}B] unsignedLE={u_le_hex} (u={u_le_val}) unsignedBE={u_be_hex} (u={u_be_val})  "
+                  f"signedLE={s_le_hex} (s={s_le_val}) signedBE={s_be_hex} (s={s_be_val})")
+        return
+
+    # - FALLBACK: if convertible to bytes
+    try:
+        b = bytes(x)
+        if b:
+            print(f"    len  : {len(b)}")
+            print(f"    bin  : {_byte2bits(b)}")
+            print(f"    oct  : {_byte2oct(b)}")
+            for l in _qword_hexdump(b):
+                print(l)
+            return
     except Exception:
         pass
 
-    c_desc = f"\033[1;31m{desc:<16}\033[0m"     # red
-    c_addr = f"\033[1;33m{addr:#x}\033[0m"      # yellow
-    success(f"Leak {c_desc:<16} addr: {c_addr}")
-
-pa = leak
+# - Aliases
+pa      = print_addr
+leak    = print_addr
+pd      = print_data
 
 # Logging
 # ------------------------------------------------------------------------
@@ -196,12 +326,91 @@ def parse_argv(argv: Sequence[str],
 
 # Helpers
 # ------------------------------------------------------------------------
-def _colorize():
-    if sys.stdout.isatty() and not os.environ.get("NO_COLOR"):
-        return {
-            "bold": "\033[1m",
-            "grn":  "\033[32m",
-            "cya":  "\033[36m",
-            "clr":  "\033[0m",
-        }
-    return dict.fromkeys(["bold", "grn", "cya", "clr"], "")
+def colorize(enable: bool | None = None) -> dict:
+    """
+    Return a mapping of color/style names -> ANSI sequences (or empty strings when disabled).
+
+    - enable: if True/False, force enable/disable. If None (default), auto-detect:
+        enabled iff sys.stdout.isatty() and NO_COLOR env var is not set.
+    - Always returns the same set of keys so callers can use mapping['red'] safely.
+
+    Example:
+        COL = colorize()                # auto
+        print(f"{COL['bold']}{COL['red']}leak{COL['clr']}")
+        # or explicitly enable/disable:
+        COL = colorize(enable=True)     # force on (useful in tests)
+    """
+    import os, sys
+
+    palette = {
+        # styles
+        "bold":   "\033[1m",
+        "dim":    "\033[2m",
+        "italic": "\033[3m",
+        "ul":     "\033[4m",
+        "blink":  "\033[5m",
+        "rev":    "\033[7m",
+        "hide":   "\033[8m",
+        # reset
+        "clr":    "\033[0m",
+        # normal fg
+        "blk":    "\033[30m",
+        "red":    "\033[31m",
+        "grn":    "\033[32m",
+        "yel":    "\033[33m",
+        "blu":    "\033[34m",
+        "mag":    "\033[35m",
+        "cya":    "\033[36m",
+        "wht":    "\033[37m",
+        # bright fg
+        "bblk":   "\033[90m",
+        "bred":   "\033[91m",
+        "bgrn":   "\033[92m",
+        "byel":   "\033[93m",
+        "bblu":   "\033[94m",
+        "bmag":   "\033[95m",
+        "bcya":   "\033[96m",
+        "bwht":   "\033[97m",
+        # backgrounds
+        "bg_blk": "\033[40m",
+        "bg_red": "\033[41m",
+        "bg_grn": "\033[42m",
+        "bg_yel": "\033[43m",
+        "bg_blu": "\033[44m",
+        "bg_mag": "\033[45m",
+        "bg_cya": "\033[46m",
+        "bg_wht": "\033[47m",
+    }
+    if enable is None:
+        enabled = sys.stdout.isatty() and (os.environ.get("NO_COLOR") is None)
+    else:
+        enabled = bool(enable)
+
+    if enabled:
+        return palette
+    return {k: "" for k in palette}
+
+def _get_caller_varname(obj: Any, depth: int = 2) -> str:
+    """
+    Return the 1st local variable name in the caller frame
+    whose identity matches `obj` (id equal). If none found, return '<expr>'.
+
+      @depth: how many frames to walk up (default 2 => caller of caller).
+    """
+    try:
+        frame = inspect.currentframe()
+        for _ in range(depth):
+            if frame is None:
+                return "<expr>"
+            frame = frame.f_back
+        if frame is None:
+            return "<expr>"
+        for name, val in frame.f_locals.items():
+            try:
+                if id(val) == id(obj):
+                    return name
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return "<expr>"
