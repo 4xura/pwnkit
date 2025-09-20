@@ -14,6 +14,98 @@ __all__ = [
         "colorize",
         ]
 
+# Helpers
+# ------------------------------------------------------------------------
+def colorize(enable: bool | None = None) -> dict:
+    """
+    Return a mapping of color/style names -> ANSI sequences (or empty strings when disabled).
+
+    - enable: if True/False, force enable/disable. If None (default), auto-detect:
+        enabled iff sys.stdout.isatty() and NO_COLOR env var is not set.
+    - Always returns the same set of keys so callers can use mapping['red'] safely.
+
+    Example:
+        COL = colorize()                # auto
+        print(f"{COL['bold']}{COL['red']}leak{COL['clr']}")
+        # or explicitly enable/disable:
+        COL = colorize(enable=True)     # force on (useful in tests)
+    """
+    palette = {
+        # styles
+        "bold":   "\033[1m",
+        "dim":    "\033[2m",
+        "italic": "\033[3m",
+        "ul":     "\033[4m",
+        "blink":  "\033[5m",
+        "rev":    "\033[7m",
+        "hide":   "\033[8m",
+        # reset
+        "clr":    "\033[0m",
+        # normal fg
+        "blk":    "\033[30m",
+        "red":    "\033[31m",
+        "grn":    "\033[32m",
+        "yel":    "\033[33m",
+        "blu":    "\033[34m",
+        "mag":    "\033[35m",
+        "cya":    "\033[36m",
+        "wht":    "\033[37m",
+        # bright fg
+        "bblk":   "\033[90m",
+        "bred":   "\033[91m",
+        "bgrn":   "\033[92m",
+        "byel":   "\033[93m",
+        "bblu":   "\033[94m",
+        "bmag":   "\033[95m",
+        "bcya":   "\033[96m",
+        "bwht":   "\033[97m",
+        # backgrounds
+        "bg_blk": "\033[40m",
+        "bg_red": "\033[41m",
+        "bg_grn": "\033[42m",
+        "bg_yel": "\033[43m",
+        "bg_blu": "\033[44m",
+        "bg_mag": "\033[45m",
+        "bg_cya": "\033[46m",
+        "bg_wht": "\033[47m",
+    }
+    if enable is None:
+        enabled = sys.stdout.isatty() and (os.environ.get("NO_COLOR") is None)
+    else:
+        enabled = bool(enable)
+
+    if enabled:
+        return palette
+    return {k: "" for k in palette}
+
+def _get_caller_varname(obj: Any, depth: int = 2) -> str:
+    """
+    Return the 1st local variable name in the caller frame
+    whose identity matches `obj` (id equal). If none found, return '<expr>'.
+
+      @depth: how many frames to walk up (default 2 => caller of caller).
+    """
+    try:
+        frame = inspect.currentframe()
+        for _ in range(depth):
+            if frame is None:
+                return "<expr>"
+            frame = frame.f_back
+        if frame is None:
+            return "<expr>"
+        for name, val in frame.f_locals.items():
+            try:
+                if id(val) == id(obj):
+                    return name
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return "<expr>"
+
+# - Internals
+COL = colorize(enable=True)
+
 # Data Transformers
 # ------------------------------------------------------------------------
 def itoa(a: int) -> bytes:
@@ -42,7 +134,7 @@ def b2hex(b: Union[bytes, bytearray, memoryview]) -> str:
     """
     b2hex(b"aaa") # '0x616161'
     """
-    hexstr = "0x" + binascii.hexlify(ensure_bytes(b)).decode()
+    hexstr = "0x" + binascii.hexlify(bytex(b)).decode()
     return hexstr
 
 def url_qs(params, *, rfc3986=True, doseq=True):
@@ -80,7 +172,7 @@ def print_addr(addr: int, *, name: Optional[str] = None, depth: int = 2) -> None
     try:
         success(text)
     except NameError:
-        print(f"[+] {text}")
+        print(f"[{COL['grn']}+{COL['clr']}] {text}")
 
 # - Print data with various data format dumps
 def _pad_hex(b: bytes, bits: Literal[64, 32] = 64, lsb_first: bool = True) -> str:
@@ -132,8 +224,7 @@ def print_data(x, name: Optional[str] = None, *,
     - For int: bin, oct, dec, hex, then [1/2/4/8B] LE/BE with numeric interpretations
     """
     label = name if name is not None else _get_caller_varname(x)
-    title = f"[+] Print data: {label}"
-    # title = f"[+] Print data: "
+    title = f"[{COL['grn']}+{COL['clr']}] {COL['bold']}Print data: {COL['blu']}{label}{COL['clr']}"
     print(title)
     tname = type(x).__name__
     print(f"    type : {tname}")
@@ -328,93 +419,3 @@ def parse_argv(argv: Sequence[str],
 
     return _usage(argv)
 
-# Helpers
-# ------------------------------------------------------------------------
-def colorize(enable: bool | None = None) -> dict:
-    """
-    Return a mapping of color/style names -> ANSI sequences (or empty strings when disabled).
-
-    - enable: if True/False, force enable/disable. If None (default), auto-detect:
-        enabled iff sys.stdout.isatty() and NO_COLOR env var is not set.
-    - Always returns the same set of keys so callers can use mapping['red'] safely.
-
-    Example:
-        COL = colorize()                # auto
-        print(f"{COL['bold']}{COL['red']}leak{COL['clr']}")
-        # or explicitly enable/disable:
-        COL = colorize(enable=True)     # force on (useful in tests)
-    """
-    import os, sys
-
-    palette = {
-        # styles
-        "bold":   "\033[1m",
-        "dim":    "\033[2m",
-        "italic": "\033[3m",
-        "ul":     "\033[4m",
-        "blink":  "\033[5m",
-        "rev":    "\033[7m",
-        "hide":   "\033[8m",
-        # reset
-        "clr":    "\033[0m",
-        # normal fg
-        "blk":    "\033[30m",
-        "red":    "\033[31m",
-        "grn":    "\033[32m",
-        "yel":    "\033[33m",
-        "blu":    "\033[34m",
-        "mag":    "\033[35m",
-        "cya":    "\033[36m",
-        "wht":    "\033[37m",
-        # bright fg
-        "bblk":   "\033[90m",
-        "bred":   "\033[91m",
-        "bgrn":   "\033[92m",
-        "byel":   "\033[93m",
-        "bblu":   "\033[94m",
-        "bmag":   "\033[95m",
-        "bcya":   "\033[96m",
-        "bwht":   "\033[97m",
-        # backgrounds
-        "bg_blk": "\033[40m",
-        "bg_red": "\033[41m",
-        "bg_grn": "\033[42m",
-        "bg_yel": "\033[43m",
-        "bg_blu": "\033[44m",
-        "bg_mag": "\033[45m",
-        "bg_cya": "\033[46m",
-        "bg_wht": "\033[47m",
-    }
-    if enable is None:
-        enabled = sys.stdout.isatty() and (os.environ.get("NO_COLOR") is None)
-    else:
-        enabled = bool(enable)
-
-    if enabled:
-        return palette
-    return {k: "" for k in palette}
-
-def _get_caller_varname(obj: Any, depth: int = 2) -> str:
-    """
-    Return the 1st local variable name in the caller frame
-    whose identity matches `obj` (id equal). If none found, return '<expr>'.
-
-      @depth: how many frames to walk up (default 2 => caller of caller).
-    """
-    try:
-        frame = inspect.currentframe()
-        for _ in range(depth):
-            if frame is None:
-                return "<expr>"
-            frame = frame.f_back
-        if frame is None:
-            return "<expr>"
-        for name, val in frame.f_locals.items():
-            try:
-                if id(val) == id(obj):
-                    return name
-            except Exception:
-                continue
-    except Exception:
-        pass
-    return "<expr>"
