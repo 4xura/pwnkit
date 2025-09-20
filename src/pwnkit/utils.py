@@ -83,13 +83,15 @@ def print_addr(addr: int, *, name: Optional[str] = None, depth: int = 2) -> None
         print(f"[+] {text}")
 
 # - Print data with various data format dumps
-def _pad_hex(b: bytes) -> str:
-    return "0x" + binascii.hexlify(b).decode().rjust(len(b)*2, "0")
+def _pad_hex(b: bytes, bits: Literal[64, 32] = 64, lsb_first: bool = True) -> str:
+    padded = b.ljust(int(bits/8), b"\x00")
+    data = padded[::-1] if lsb_first else padded
+    return "0x" + binascii.hexlify(data).decode()
 
 def _qword_hexdump(buf: bytes):
     if not buf:
         return ["(empty)"]
-    out = ["[*] hexdump:"]
+    out = ["[*] memoryview:"]
     for off in range(0, len(buf), 16):
         chunk = buf[off:off+16]
         page, offset = (off // 0x10000), (off % 0x10000)
@@ -98,7 +100,7 @@ def _qword_hexdump(buf: bytes):
         q1_hex = _pad_hex(q1.ljust(8, b"\x00"))
         q2_hex = _pad_hex(q2.ljust(8, b"\x00")) if q2 else ""
         ascii_col = "".join(chr(b) if 32 <= b < 127 else "." for b in chunk)
-        if q2_hex:
+        if q2:
             out.append(f"{label}│ {q1_hex}  {q2_hex} │ {ascii_col}")
         else:
             out.append(f"{label}│ {q1_hex}                  │ {ascii_col}")
@@ -146,6 +148,7 @@ def print_data(x, name: Optional[str] = None, *,
         # binary / octal of the encoded bytes
         print(f"    bin  : {_byte2bits(b)}")
         print(f"    oct  : {_byte2oct(b)}")
+        print(f"    hex  : 0x{binascii.hexlify(b).decode()}")
         # per-character table
         if chars > 0:
             print("[*] chars:")
@@ -165,6 +168,7 @@ def print_data(x, name: Optional[str] = None, *,
         print(f"    len  : {len(b)}")
         print(f"    bin  : {_byte2bits(b)}")
         print(f"    oct  : {_byte2oct(b)}")
+        print(f"    hex  : 0x{binascii.hexlify(b).decode()}")
         for line in _qword_hexdump(b):
             print(line)
         return
@@ -176,7 +180,7 @@ def print_data(x, name: Optional[str] = None, *,
         print(f"    oct  : {oct(x)}")
         print(f"    dec  : {x}")
         print(f"    hex  : {hex(x)}")
-        print("[*] hexdump")
+        print("[*] memoryview")
         for w in widths:
             ule = _u_bytes(x, w); ube = ule[::-1]
             u_le_hex = _pad_hex(ule); u_be_hex = _pad_hex(ube)
