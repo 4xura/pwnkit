@@ -224,7 +224,7 @@ def print_data(x, name: Optional[str] = None, *,
     - For int: bin, oct, dec, hex, then [1/2/4/8B] LE/BE with numeric interpretations
     """
     label = name if name is not None else _get_caller_varname(x)
-    title = f"[{COL['grn']}+{COL['clr']}] {COL['bold']}Print data: {COL['blu']}{label}{COL['clr']}"
+    title = f"[{COL['grn']}+{COL['clr']}] Print data: {COL['grn']}{label}{COL['clr']}"
     print(title)
     tname = type(x).__name__
     print(f"    type : {tname}")
@@ -239,7 +239,7 @@ def print_data(x, name: Optional[str] = None, *,
         # binary / octal of the encoded bytes
         print(f"    bin  : {_byte2bits(b)}")
         print(f"    oct  : {_byte2oct(b)}")
-        print(f"    hex  : 0x{binascii.hexlify(b).decode()}")
+        print("    hex  :", "".join(f"\\x{byte:02x}" for byte in b))
         # per-character table
         if chars > 0:
             print("[*] chars:")
@@ -259,7 +259,7 @@ def print_data(x, name: Optional[str] = None, *,
         print(f"    len  : {len(b)}")
         print(f"    bin  : {_byte2bits(b)}")
         print(f"    oct  : {_byte2oct(b)}")
-        print(f"    hex  : 0x{binascii.hexlify(b).decode()}")
+        print("    hex  :", "".join(f"\\x{byte:02x}" for byte in b))
         for line in _qword_hexdump(b):
             print(line)
         return
