@@ -213,5 +213,6 @@ build.sh
 tag_release.sh
 src/pwnkit/_version.py
 offline_prep.sh
+offline_install.sh
 wheelhouse
 kit.tgz
