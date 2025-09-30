@@ -39,8 +39,8 @@ for name in _modules:
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .io import (
-        Tube, g, gp, r, ru, s, sa, set_global_io, sl, sla, uu64,
+    from .config import (
+        Config, alias, g, gp, r, rl, ru, s, sa, sl, sla, uu64,
     )
     from .encrypt import (
         PointerGuard, SafeLinking,
