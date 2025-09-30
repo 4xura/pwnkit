@@ -68,7 +68,6 @@ Example using default template:
 $ pwnkit exp.py -f ./evil-corp -l ./libc.so.6 \
                 -A aarch64 -E big \
                 -a john.doe -b https://johndoe.com
-
 [+] Wrote exp.py (template: pkg:default.py.tpl)
 
 $ cat exp.py

@@ -46,10 +46,10 @@ class Config:
         if (self.host is None) ^ (self.port is None):
             raise ValueError("Both host and port must be set for remote mode.")
         if not self.file_path:
-            warn("Fill up target binary in the created exploit script")
+            warn("Input target binary run path in the created exploit script")
         if self.libc_path:
             if not os.path.exists(self.libc_path):
-                warn("supplied libc not exist")
+                warn("Input libc does not exist")
                 os._exit(222)
 
     def _is_remote(self) -> bool:
