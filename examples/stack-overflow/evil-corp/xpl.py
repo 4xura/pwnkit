@@ -22,27 +22,15 @@ import os, sys
 # ---------------------------------------------------------------------------
 BIN_PATH   = '/home/Axura/pwn/pwnkit/examples/stack-overflow/evil-corp/evilcorp'
 LIBC_PATH  = None
-elf        = ELF(BIN_PATH, checksec=False)
-libc       = ELF(LIBC_PATH) if LIBC_PATH else None
 host, port = parse_argv(sys.argv[1:], None, None)
+ssl  = False
+env  = {}
+elf  = ELF(BIN_PATH, checksec=False)
+libc = ELF(LIBC_PATH) if LIBC_PATH else None
 
-ctx = Context(
-    arch      = 'amd64',
-    os        = 'linux',
-    endian    = 'little',
-    log_level = 'debug',
-    terminal  = ('tmux', 'splitw', '-h')
-).push()
-
-io = Tube(
-    file_path = BIN_PATH,
-    libc_path = LIBC_PATH,
-    host      = host,
-    port      = port,
-    env       = {}
-).init().alias()
-set_global_io(io)	# s, sa, sl, sla, r, ru, uu64
-
+Context('amd64', 'linux', 'little', 'debug', ('tmux', 'splitw', '-h')).push()
+io = Config(BIN_PATH, LIBC_PATH, host, port, ssl, env).init()
+alias(io)	# s, sa, sl, sla, r, rl, ru, uu64, g, gp
 init_pr("debug", "%(asctime)s - %(levelname)s - %(message)s", "%H:%M:%S")
 
 # EXPLOIT

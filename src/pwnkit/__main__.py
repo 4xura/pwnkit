@@ -288,14 +288,13 @@ def cli():
     if args.term is not None:      ctx.terminal = tuple(args.term)
 
     # - IO wiring
-    io = Tube(
+    io = Config(
         file_path=args.file_path or None,
         libc_path=args.libc_path or None,
         host=args.host or None,
         port=args.port or None,
     )
     io_line = io.as_code()
-
 
     # - Template output
     #   default resolution: CLI → ENV → "default"
@@ -319,6 +318,7 @@ def cli():
         libc_path=io.libc_path,
         host=io.host,
         port=io.port,
+        ssl=io.ssl,
         io_line=io.as_code(),
         author=args.author,
         blog=args.blog,

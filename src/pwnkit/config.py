@@ -1,44 +1,46 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional, Union, Dict
+from types import MethodType
+
+from pwnlib.term.key import get
 from .gdbx import ga
 from pwn import pause, tube, u64, gdb, warn   # type: ignore
 import os
 
 __all__ = [
-    "Tube",
-    # optional global helpers:
-    "set_global_io", "s", "sa", "sl", "sla", "r", "ru", "uu64", 
+    "Config",
+    "alias", "s", "sa", "sl", "sla", "r", "rl", "ru", "uu64", 
     "g", "gp",
 ]
 
 Chars = Union[str, bytes]
 
-# Init a Tube for IO stream
-# ------------------------------------------------------------------------
-@dataclass(slots=True)
-class Tube:
+@dataclass
+class Config:
     """
     Usage:
         # local
-        io = Tube("./vuln", libc_path="./libc.so.6").alias()
-        io.s(b"AAAA"); io.sla(b"> ", b"1"); data = io.r(); io.interactive()
+        io = Config("./vuln", libc_path="./libc.so.6").init()
 
         # remote
-        io = Tube("./vuln", host="10.10.10.10", port=31337).alias()
+        io = Config("./vuln", host="10.10.10.10", port=31337).init()
+        io = Config("./vuln", host="4xura.com", port=1337, ssl=True).init()
 
         # custom env (merged with libc preload if local)
-        io = Tube("./vuln", env={"ASAN_OPTIONS":"detect_leaks=0"}).alias()
+        io = Config("./vuln", env={"ASAN_OPTIONS":"detect_leaks=0"}).init()
+
+        cfg = Config("./vuln", libc_path="./libc.so.6")
+        io = cfg.init()
+        io.ru(b"\n")  
+        io.sl(b"cmd")
     """
     file_path   : Optional[str] = None
     libc_path   : Optional[str] = None
     host        : Optional[str] = None
     port        : Optional[int] = None
+    ssl         : Optional[bool] = False
     env         : Dict[str, str] = field(default_factory=dict)
-
-    # - Runtime handle
-    _io         : Optional[tube] = field(default=None, init=False, repr=False, compare=False)
-    _aliased    : bool = field(default=False, init=False, repr=False, compare=False)
 
     def __post_init__(self):
         if (self.host is None) ^ (self.port is None):
@@ -48,14 +50,6 @@ class Tube:
         if self.libc_path:
             self.libc_path = os.path.abspath(self.libc_path)
 
-    # - Lazily open tube
-    def init(self):
-        if self._io is not None:
-            raise RuntimeError("Tube already initialized.")
-        self._io = self._open()
-        return self
-
-    # - Config helpers
     def is_remote(self) -> bool:
         return self.host is not None and self.port is not None
 
@@ -77,7 +71,7 @@ class Tube:
     def as_code(self) -> str:
         """String form of how we'd open the tube (for debugging/scaffolds)."""
         if self.is_remote():
-            return f"remote({self.host!r}, {self.port})"
+            return f"remote({self.host!r}, {self.port}, ssl={self.ssl})"
         if self.libc_path:
             libc_abs = os.path.abspath(self.libc_path)
             libdir   = os.path.dirname(libc_abs) or "."
@@ -87,86 +81,50 @@ class Tube:
         return f"process({self.file_path!r}{', env='+repr(self.env) if self.env else ''})"
 
     # - Open tube
-    def _open(self) -> tube:
+    def _open_tube(self) -> tube:
         from pwn import process, remote
         if self.is_remote():
-            return remote(self.host, self.port)
+            return remote(self.host, self.port, ssl=self.ssl)
         env = self.build_env()
         return process(self.file_path, env=env) if env else process(self.file_path)
 
-    # - Alias
-    def alias(self) -> "Tube":
-        """Enable io.s/io.sla/io.r/io.ru/io.uu64; chainable."""
-        if self._io is None:
-            raise RuntimeError("Call io.init() before io.alias().")
-        self._aliased = True
-        return self
-
-    def __getattr__(self, name: str):
-        """Forward unknown attributes (interactive, recvline, ...) to the tube."""
-        if name.startswith("_"):
-            raise AttributeError(name)
-        if self._io is None:
-            raise AttributeError("IO has no tube yet.")
-        return getattr(self._io, name)
-
-    def _t(self) -> tube:
-        if self._io is None:
-            raise RuntimeError("Tube not opened.")
-        return self._io
-
-    def s(self, data: Chars) -> None:
-        assert self._aliased, "Call io.alias() to enable shortcuts."
-        self._t().send(data)
-
-    def sa(self, delim: Chars, data: Chars) -> None:
-        assert self._aliased, "Call io.alias() to enable shortcuts."
-        self._t().sendafter(delim, data)
-
-    def sl(self, data: Chars) -> None:
-        assert self._aliased, "Call io.alias() to enable shortcuts."
-        self._t().sendline(data)
-
-    def sla(self, delim: Chars, data: Chars) -> None:
-        assert self._aliased, "Call io.alias() to enable shortcuts."
-        self._t().sendlineafter(delim, data)
-
-    def r(self, n: int = 4096) -> bytes:
-        assert self._aliased, "Call io.alias() to enable shortcuts."
-        return self._t().recv(n)
-
-    def ru(self, delim: Chars, drop: bool = True) -> bytes:
-        assert self._aliased, "Call io.alias() to enable shortcuts."
-        return self._t().recvuntil(delim, drop=drop)
-
-    def uu64(self, data: bytes) -> int:
-        assert self._aliased, "Call io.alias() to enable shortcuts."
-        return u64(data.ljust(8, b"\x00"))
-
-    def g(self, script: str = "") -> None:
-        assert self._aliased, "Call io.alias() to enable shortcuts."
-        ga(target=self._t(), script=script)
+    # - Start IO
+    def init(self) -> tube:
+        io = self._open_tube()
+        _ALIASES: Dict[str, str] = {
+            "ru"    : "recvuntil",
+            "rn"    : "recvn",
+            "rl"    : "recvline",
+            "r"     : "recv",
+            "s"     : "send",
+            "sa"    : "sendafter",
+            "sl"    : "sendline",
+            "sla"   : "sendlineafter",
+        }
+        for short, real in _ALIASES.items():
+            if not hasattr(io, real):
+                continue
+            orig = getattr(io, real)
+            if getattr(orig, "__self__", None) is not None:
+                setattr(io, short, orig)
+            else:
+                setattr(io, short, MethodType(orig, io))
+        io.uu64 = lambda d: u64(d.ljust(8, b"\x00"))
+        return io
 
 
-# Global short aliases (optional)
+# Global short aliases
 # ------------------------------------------------------------------------
 _global_io: tube | None = None
 
-def set_global_io(obj) -> None:
+def alias(io: tube) -> None:
     """
-    Register the default IO used by the global shorthands (s, sa, sl, sla, r, ru, uu64).
-    Accepts either:
-      - Tube (wrapper): we'll call ._t() to get the underlying pwntools tube
-      - pwntools tube directly
+    Register the initialized tube object to use global shorthands:
+        s, sa, sl, sla, r, ru, uu64, g, ga, gp, etc.
     """
     global _global_io
-    # Tube wrapper?
-    if hasattr(obj, "_t"):
-        _global_io = obj._t()
-        return
-    # Raw pwntools tube?
-    if hasattr(obj, "send") and hasattr(obj, "recv"):
-        _global_io = obj
+    if hasattr(io, "send") and hasattr(io, "recv"):
+        _global_io = io
         return
     raise TypeError("set_global_io() expects a Tube or a pwntools tube")
 
@@ -179,6 +137,7 @@ def sa(d: Chars, x: Chars) -> None: return _io().sendafter(d, x)
 def sl(x: Chars) -> None: return _io().sendline(x)
 def sla(d: Chars, x: Chars) -> None: return _io().sendlineafter(d, x)
 def r(n: int = 4096) -> bytes: return _io().recv(n)
+def rl(ke: bool = True) -> bytes: return _io().recvline(ke)
 def ru(d: Chars, drop: bool = True) -> bytes: return _io().recvuntil(d, drop=drop)
 def uu64(x: bytes) -> int: return u64(x.ljust(8, b"\x00"))
 

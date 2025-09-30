@@ -10,7 +10,7 @@ except ImportError:
 
 # --- Submodules ---
 _modules: tuple[str, ...] = (
-    "io",
+    "config",
     "encrypt",
     "rop",
     "gdbx",
