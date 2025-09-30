@@ -46,8 +46,7 @@ class Config:
         if (self.host is None) ^ (self.port is None):
             raise ValueError("Both host and port must be set for remote mode.")
         if not self.file_path:
-            warn("Must provide a target binary to pwn!")
-            os._exit(111)
+            warn("Fill up target binary in the created exploit script")
         if self.libc_path:
             if not os.path.exists(self.libc_path):
                 warn("supplied libc not exist")
