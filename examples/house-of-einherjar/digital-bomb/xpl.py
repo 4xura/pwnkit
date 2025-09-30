@@ -11,7 +11,7 @@
 # Usage:
 # ------
 # - Local mode  : ./xpl.py
-# - Remote mode : ./xpl.py [ <IP> <PORT> | <IP:PORT> ]
+# - Remote mode : ./xpl.py [ <HOST> <PORT> | <HOST:PORT> ]
 #
 
 from pwnkit import *
@@ -22,14 +22,14 @@ import sys
 # ------------------------------------------------------------------------
 BIN_PATH   = "./digital_bomb"
 LIBC_PATH  = "./libc.so.6"
-host, port = parse_argv(sys.argv[1:], None, None)
+host, port = load_argv(sys.argv[1:])
 ssl  = False
 env  = {}
 elf  = ELF(BIN_PATH, checksec=False)
 libc = ELF(LIBC_PATH) if LIBC_PATH else None
 
 Context('amd64', 'linux', 'little', 'debug', ('tmux', 'splitw', '-h')).push()
-io = Config(BIN_PATH, LIBC_PATH, host, port, ssl, env).init()
+io = Config(BIN_PATH, LIBC_PATH, host, port, ssl, env).run()
 alias(io)	# s, sa, sl, sla, r, rl, ru, uu64, g, gp
 init_pr("debug", "%(asctime)s - %(levelname)s - %(message)s", "%H:%M:%S")
 
@@ -67,7 +67,7 @@ def bomb(min, max, guess):
     sla(b'Enter max (0-500): ', itoa(max))
     sla(b'Your guess :', itoa(guess))
 
-def xpl(**kwargs):
+def exploit(**kwargs):
     """
     Gdb
     """
@@ -231,5 +231,5 @@ def xpl(**kwargs):
 # PIPELINE
 # ------------------------------------------------------------------------
 if __name__ == "__main__":
-    xpl()
+    exploit()
 

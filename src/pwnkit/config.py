@@ -21,17 +21,17 @@ class Config:
     """
     Usage:
         # local
-        io = Config("./vuln", libc_path="./libc.so.6").init()
+        io = Config("./vuln", libc_path="./libc.so.6").run()
 
         # remote
-        io = Config("./vuln", host="10.10.10.10", port=31337).init()
-        io = Config("./vuln", host="4xura.com", port=1337, ssl=True).init()
+        io = Config("./vuln", host="10.10.10.10", port=31337).run()
+        io = Config("./vuln", host="4xura.com", port=1337, ssl=True).run()
 
         # custom env (merged with libc preload if local)
-        io = Config("./vuln", env={"ASAN_OPTIONS":"detect_leaks=0"}).init()
+        io = Config("./vuln", env={"ASAN_OPTIONS":"detect_leaks=0"}).run()
 
         cfg = Config("./vuln", libc_path="./libc.so.6")
-        io = cfg.init()
+        io = cfg.run()
         io.ru(b"\n")  
         io.sl(b"cmd")
     """
@@ -45,17 +45,20 @@ class Config:
     def __post_init__(self):
         if (self.host is None) ^ (self.port is None):
             raise ValueError("Both host and port must be set for remote mode.")
-        if self.file_path:
-            self.file_path = os.path.abspath(self.file_path)
+        if not self.file_path:
+            warn("Must provide a target binary to pwn!")
+            os._exit(111)
         if self.libc_path:
-            self.libc_path = os.path.abspath(self.libc_path)
+            if not os.path.exists(self.libc_path):
+                warn("supplied libc not exist")
+                os._exit(222)
 
-    def is_remote(self) -> bool:
+    def _is_remote(self) -> bool:
         return self.host is not None and self.port is not None
 
-    def build_env(self) -> Optional[Dict[str, str]]:
+    def _build_env(self) -> Optional[Dict[str, str]]:
         """Merge user env + (optional) libc preload for local exec."""
-        if self.is_remote():
+        if self._is_remote():
             return None
         if not self.libc_path and not self.env:
             return None
@@ -70,7 +73,7 @@ class Config:
 
     def as_code(self) -> str:
         """String form of how we'd open the tube (for debugging/scaffolds)."""
-        if self.is_remote():
+        if self._is_remote():
             return f"remote({self.host!r}, {self.port}, ssl={self.ssl})"
         if self.libc_path:
             libc_abs = os.path.abspath(self.libc_path)
@@ -80,17 +83,18 @@ class Config:
             return f"process({self.file_path!r}, env={env_code!r})"
         return f"process({self.file_path!r}{', env='+repr(self.env) if self.env else ''})"
 
-    # - Open tube
-    def _open_tube(self) -> tube:
-        from pwn import process, remote
-        if self.is_remote():
-            return remote(self.host, self.port, ssl=self.ssl)
-        env = self.build_env()
-        return process(self.file_path, env=env) if env else process(self.file_path)
-
     # - Start IO
-    def init(self) -> tube:
-        io = self._open_tube()
+    def run(self, *args, **kwargs) -> tube:
+        from pwn import process, remote
+        if self._is_remote():
+            io = remote(self.host, self.port, *args, ssl=self.ssl, **kwargs)
+        else:
+            env = self._build_env()
+            if env:
+                io = process(self.file_path, *args, env=env, **kwargs)
+            else:
+                io = process(self.file_path, *args, **kwargs)
+
         _ALIASES: Dict[str, str] = {
             "ru"    : "recvuntil",
             "rn"    : "recvn",
@@ -101,15 +105,19 @@ class Config:
             "sl"    : "sendline",
             "sla"   : "sendlineafter",
         }
+
         for short, real in _ALIASES.items():
+            if hasattr(io, short):
+                continue
             if not hasattr(io, real):
                 continue
-            orig = getattr(io, real)
-            if getattr(orig, "__self__", None) is not None:
-                setattr(io, short, orig)
+            attr = getattr(io, real)
+            if getattr(attr, "__self__", None) is not None:
+                setattr(io, short, attr)
             else:
-                setattr(io, short, MethodType(orig, io))
+                setattr(io, short, MethodType(attr, io))
         io.uu64 = lambda d: u64(d.ljust(8, b"\x00"))
+
         return io
 
 

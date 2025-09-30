@@ -105,9 +105,8 @@ def init_args() -> Namespace:
         description=(
             "Generate a clean exploit scaffold with embedded Context config.\n"
             "Examples:\n"
-            "  pwnkit xpl.py    (fill up exp manually)\n"
+            "  pwnkit xpl.py    (fill manually)\n"
             "  pwnkit xpl.py --file ./vuln --libc ./libc.so.6\n"
-            "  pwnkit xpl.py -f ./vuln -l ./libc.so.6 -i 10.10.10.10 -p 31337\n"
             "  pwnkit xpl.py -f ./vuln -l ./libc.so.6 -t heap\n"
             "  pwnkit xpl.py -a Pwner -b https://pwners.com\n"
             "  pwnkit xpl.py -f ./vuln -A aarch64 -E big\n"
@@ -141,22 +140,6 @@ def init_args() -> Namespace:
         default="",
         metavar="libc",
         help="optional target libc to preload"
-    )
-
-    # - Target (decides local vs remote purely by presence of host+port)
-    target = ap.add_argument_group("Target")
-    target.add_argument(
-        "-i", "--ip", "--host",
-        metavar="ip",
-        dest="host",
-        help="remote host (if provided with --port → remote mode)"
-    )
-    target.add_argument(
-        "-p", "--port",
-        metavar="port",
-        dest="port",
-        type=int,
-        help="remote port (requires --host)"
     )
 
     # - Context
@@ -291,8 +274,6 @@ def cli():
     io = Config(
         file_path=args.file_path or None,
         libc_path=args.libc_path or None,
-        host=args.host or None,
-        port=args.port or None,
     )
     io_line = io.as_code()
 
@@ -316,8 +297,6 @@ def cli():
         term=tuple(ctx.terminal),
         file_path=io.file_path,
         libc_path=io.libc_path,
-        host=io.host,
-        port=io.port,
         ssl=io.ssl,
         io_line=io.as_code(),
         author=args.author,

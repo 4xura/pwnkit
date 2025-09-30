@@ -10,7 +10,7 @@ __all__ = [
         "itoa", "i2a", "bytex", "hex2b", "b2hex", "url_qs",
         "init_pr",
         "logger", "pr_debug", "pr_info", "pr_warn", "pr_error", "pr_critical", "pr_exception",
-        "parse_argv",
+        "load_argv",
         "colorize",
         ]
 
@@ -381,27 +381,25 @@ def pr_exception(msg):
 # ------------------------------------------------------------------------
 def _usage(argv: Sequence[str]) -> Tuple[None, None]:
     prog = sys.argv[0] if sys.argv else "xpl.py"
-    print(f"Usage: {prog} [IP PORT] | [IP:PORT]\n"
+    print(f"Usage: {prog} [HOST PORT] | [HOST:PORT]\n"
           f"Examples:\n"
           f"  {prog}\n"
           f"  {prog} 10.10.10.10 31337\n"
-          f"  {prog} 10.10.10.10:31337\n")
+          f"  {prog} 10.10.10.10:31337\n"
+          f"  {prog} pwn.4xura.com:31337\n")
     sys.exit(1)
 
-# Parse argv (ip, host)
+# Parse argv to retrieve (host, port)
 # ------------------------------------------------------------------------
-def parse_argv(argv: Sequence[str],
-                default_host: Optional[str] = None,
-                default_port: Optional[int] = None
-                ) -> Tuple[Optional[str], Optional[int]]:
+def load_argv(argv: Sequence[str]) -> Tuple[Optional[str], Optional[int]]:
     """
     Accepts:
       []
-      [IP PORT]
-      [IP:PORT]
+      [HOST PORT]
+      [HOST:PORT]
     Returns (host, port) where either may be None (local mode).
     """
-    host, port = default_host, default_port
+    host, port = None, None
     if len(argv) == 0:
         return host, port
 

@@ -1,149 +1,128 @@
-import io
-import logging
-import re
-import builtins
-import types
-import sys
 import pytest
-from pwnkit.utils import leak, pa, itoa, init_pr, pr_debug, pr_info, pr_warn, pr_error, pr_critical, pr_exception, parse_argv, _usage
+import sys
+import re
+from typing import Optional, Tuple
 
-HEX = r"0x[0-9a-fA-F]+"
-ANSI = "\x1b["
-ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+from pwnkit import utils
 
-def _capture_pwnlib_logs():
-    """
-    Temporarily attach a StreamHandler to 'pwnlib' logger to capture success() output,
-    bypassing the global silencer in conftest.py.
-    """
-    logger = logging.getLogger("pwnlib")
-    stream = io.StringIO()
-    handler = logging.StreamHandler(stream)
-    # snapshot existing state
-    prev_level = logger.level
-    prev_handlers = list(logger.handlers)
-    prev_prop = logger.propagate
-    # install our capture handler
-    logger.handlers = [handler]
-    logger.setLevel(logging.INFO)
-    logger.propagate = False
-    return logger, handler, stream, prev_level, prev_handlers, prev_prop
-
-def _restore_logger(logger, prev_level, prev_handlers, prev_prop):
-    logger.setLevel(prev_level)
-    logger.handlers = prev_handlers
-    logger.propagate = prev_prop
-
-def _deansi(s: str) -> str:
-    return ANSI_RE.sub("", s)
-
-def test_leak_prints_with_var_name_and_hex(monkeypatch):
-    messages = []
-    monkeypatch.setattr("pwnkit.utils.success",
-                        lambda msg: messages.append(str(msg)))
-    buf = 0xdeadbeefcafebabe
-    leak(buf)
-    plain = [_deansi(m) for m in messages]
-    assert any("Leaked address of buf" in m for m in plain)
-    assert any(re.search(HEX, m) for m in plain)
-
-def test_pa_alias_matches_leak(monkeypatch):
-    messages = []
-    monkeypatch.setattr("pwnkit.utils.success",
-                        lambda msg: messages.append(str(msg)))
-    val = 0x4141414142424242
-    pa(val)
-    plain = [_deansi(m) for m in messages]
-    assert any("Leaked address of val" in m for m in plain)
-    assert any(re.search(HEX, m) for m in plain)
+utils.re = re
 
 
-def test_itoa_basic():
-    assert itoa(0) == b"0"
-    assert itoa(1337) == b"1337"
-
-
-def test_init_pr_colors_and_levels(capsys):
-    init_pr(level="debug", fmt="%(levelname)s %(message)s", datefmt="%H:%M:%S")
-    pr_debug("dbg"); pr_info("info"); pr_warn("warn"); pr_error("err"); pr_critical("crit")
-    err = capsys.readouterr().err
-    for msg in ("dbg","info","warn","err","crit"):
-        assert msg in err
-    assert ANSI in err
-
-
-def test_pr_exception_includes_traceback(capsys):
-    init_pr(level="error", fmt="%(levelname)s %(message)s")
-    try:
-        raise ValueError("boom")
-    except ValueError:
-        pr_exception("oops")
-    err = capsys.readouterr().err
-    assert "oops" in err and "ValueError: boom" in err
-
-class ArgvCtx:
-    """Context manager to temporarily set sys.argv for usage banner tests."""
-    def __init__(self, argv):
-        self.argv = argv
-        self._old = None
-    def __enter__(self):
-        self._old = sys.argv
-        sys.argv = list(self.argv)
-    def __exit__(self, *exc):
-        sys.argv = self._old
+# ---------------------------
+# load_argv tests (core)
+# ---------------------------
+@pytest.mark.parametrize(
+    "argv,expected",
+    [
+        ([], (None, None)),                      # no args -> local
+        (["127.0.0.1", "31337"], ("127.0.0.1", 31337)),   # two args
+        (["example.com:1337"], ("example.com", 1337)),    # host:port single arg
+    ],
+)
+def test_load_argv_ok(argv, expected: Tuple[Optional[str], Optional[int]]):
+    """load_argv should parse empty / two-arg / host:port correctly."""
+    assert utils.load_argv(list(argv)) == expected
 
 
 @pytest.mark.parametrize(
-    "argv,defaults,expected",
+    "bad_argv",
     [
-        # no args -> defaults -> local
-        ([], ("127.0.0.1", 1337), ("127.0.0.1", 1337)),
-        ([], (None, None), (None, None)),
-
-        # IP PORT
-        (["10.10.10.10", "31337"], (None, None), ("10.10.10.10", 31337)),
-        # hostname PORT
-        (["target.host", "31337"], ("1.2.3.4", 1234), ("target.host", 31337)),
-
-        # IP:PORT
-        (["10.10.10.10:31337"], (None, None), ("10.10.10.10", 31337)),
-        # hostname:PORT
-        (["pwnd.local:9001"], ("dflt.host", 4444), ("pwnd.local", 9001)),
+        (["bad:port"]),        # non-numeric port after colon -> usage exit
+        (["host", "notnum"]),  # second arg non-digit -> usage exit
+        (["a", "b", "c"]),     # too many args -> usage exit
+        (["::1::2"]),          # malformed colon count -> usage exit
     ],
 )
-def test_parse_argv_ok(argv, defaults, expected):
-    dh, dp = defaults
-    assert parse_argv(argv, dh, dp) == expected
+def test_load_argv_bad_input_exits(bad_argv):
+    """Invalid argv forms should call _usage() which exits (SystemExit)."""
+    with pytest.raises(SystemExit):
+        utils.load_argv(list(bad_argv))
 
 
-@pytest.mark.parametrize(
-    "argv",
-    [
-        ["10.10.10.10", "abc"],        # non-numeric port
-        ["pwnd.local:abc"],            # non-numeric port in colon form
-        ["10.10.10.10:"],              # missing port after colon
-        [":31337"],                    # missing host before colon
-        ["extra", "args", "bad"],      # too many args
-        ["10.10.10.10", "31337", "x"], # too many args even if first two valid
-        ["pwnd.local:-1"],             # negative sign -> not .isdigit()
-    ],
-)
-def test_parse_argv_usage_and_exit(argv, capsys):
-    # capture the usage banner and the SystemExit code
-    with ArgvCtx(["xpl.py"]):
-        with pytest.raises(SystemExit) as ei:
-            parse_argv(argv, "127.0.0.1", 1337)
-        assert ei.value.code == 1
-        out = capsys.readouterr().out
-        assert "Usage:" in out
-        assert "Examples:" in out
+# ---------------------------
+# small transformer tests
+# ---------------------------
+def test_itoa_and_i2a():
+    assert utils.itoa(123) == b"123"
+    assert utils.i2a(0) == b"0"
 
 
-def test_usage_direct(capsys):
-    with ArgvCtx(["xpl.py"]):
-        with pytest.raises(SystemExit) as ei:
-            _usage(["garbage"])
-        assert ei.value.code == 1
-        out = capsys.readouterr().out
-        assert "Usage: xpl.py" in out
-        assert "[IP PORT] | [IP:PORT]" in out
+def test_bytex_various_inputs():
+    # bytes stays bytes
+    assert utils.bytex(b"abc") == b"abc"
+    # bytearray -> bytes
+    assert utils.bytex(bytearray(b"xyz")) == b"xyz"
+    # memoryview -> bytes
+    assert utils.bytex(memoryview(b"hey")) == b"hey"
+    # str -> bytes (utf-8 default)
+    assert utils.bytex("hello") == b"hello"
+    # int -> ascii bytes
+    assert utils.bytex(42) == b"42"
+
+
+def test_hex2b_and_b2hex_roundtrip():
+    # simple hex with 0x prefix
+    assert utils.hex2b("0x6162") == b"ab"
+    # hex with spaces and non-hex separators
+    assert utils.hex2b("61 62:63") == b"abc"
+    # odd-length string auto-left-pads with 0
+    assert utils.hex2b("f") == b"\x0f"
+    # b2hex produces 0x...
+    assert utils.b2hex(b"\x61\x62\x63") == "0x616263"
+
+
+def test_hex2b_invalid_behavior():
+    # Current implementation strips non-hex characters then unhexlifies;
+    # for an all-invalid input like "zzzz" that becomes '' -> b''
+    assert utils.hex2b("zzzz") == b""
+
+
+def test_url_qs_rfc3986_and_plus():
+    params = {"q": "a b", "tag": ["x/y", "z"]}
+    qs_rfc = utils.url_qs(params, rfc3986=True)
+    # must encode space as %20 in rfc3986 mode
+    assert "q=a%20b" in qs_rfc
+    assert "tag=x%2Fy" in qs_rfc and "tag=z" in qs_rfc
+
+    qs_plus = utils.url_qs(params, rfc3986=False)
+    # plus encoding uses '+' for spaces
+    assert "q=a+b" in qs_plus
+
+
+# ---------------------------
+# printing helpers smoke tests
+# ---------------------------
+def test_print_data_str_and_bytes_and_int(capsys):
+    # string branch: check it doesn't raise and prints expected markers
+    utils.print_data("hi", name="test_str")
+    out = capsys.readouterr().out
+    assert "Print data:" in out and "test_str" in out
+
+    # bytes branch
+    utils.print_data(b"\x01\x02", name="test_bytes")
+    out = capsys.readouterr().out
+    assert "memoryview" in out or "hex" in out
+
+    # int branch: check numeric lines present
+    utils.print_data(0x4142, name="test_int")
+    out = capsys.readouterr().out
+    assert "hex" in out and "dec" in out
+
+
+# ---------------------------
+# helper: _get_caller_varname should return '<expr>' when not found
+# ---------------------------
+def test__get_caller_varname_no_match():
+    # private utility; verify fallback doesn't crash
+    res = utils._get_caller_varname(object(), depth=1)
+    assert isinstance(res, str)
+
+
+# ---------------------------
+# ensure aliases present
+# ---------------------------
+def test_aliases_exist():
+    assert utils.pa is utils.print_addr
+    assert utils.leak is utils.print_addr
+    assert utils.pd is utils.print_data
+

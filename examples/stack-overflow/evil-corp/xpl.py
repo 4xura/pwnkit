@@ -20,16 +20,16 @@ import os, sys
 
 # CONFIG
 # ---------------------------------------------------------------------------
-BIN_PATH   = '/home/Axura/pwn/pwnkit/examples/stack-overflow/evil-corp/evilcorp'
+BIN_PATH   = './evilcorp'
 LIBC_PATH  = None
-host, port = parse_argv(sys.argv[1:], None, None)
+host, port = load_argv(sys.argv[1:])
 ssl  = False
 env  = {}
 elf  = ELF(BIN_PATH, checksec=False)
 libc = ELF(LIBC_PATH) if LIBC_PATH else None
 
 Context('amd64', 'linux', 'little', 'debug', ('tmux', 'splitw', '-h')).push()
-io = Config(BIN_PATH, LIBC_PATH, host, port, ssl, env).init()
+io = Config(BIN_PATH, LIBC_PATH, host, port, ssl, env).run()
 alias(io)	# s, sa, sl, sla, r, rl, ru, uu64, g, gp
 init_pr("debug", "%(asctime)s - %(levelname)s - %(message)s", "%H:%M:%S")
 

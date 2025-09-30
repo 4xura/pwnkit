@@ -48,23 +48,26 @@ pwnkit -h
 ```
 Create an exploit script template:
 ```bash
-# local pwn
-pwnkit xpl.py --file ./pwn --libc ./libc.so.6 
-
-# remote pwn
-pwnkit xpl.py --file ./pwn --host 10.10.10.10 --port 31337
-
-# Override default preset with individual flags
-pwnkit xpl.py -f ./pwn -i 10.10.10.10 -p 31337 -A aarch64 -E big
-
 # Minimal setup to fill up by yourself
 pwnkit xpl.py
+
+# specify bin paths
+pwnkit xpl.py --file ./pwn --libc ./libc.so.6 
+# run target with args
+pwnkit xpl.py -f "./pwn args1 args2 ..." -l ./libc.so.6 
+
+# Override default preset with individual flags
+pwnkit xpl.py -A aarch64 -E big
+
+# Custom author signatures
+pwnkit xpl.py -a john,doe -b https://johndoe.com
 ```
 Example using default template:
 ```bash
 $ pwnkit exp.py -f ./evil-corp -l ./libc.so.6 \
                 -A aarch64 -E big \
                 -a john.doe -b https://johndoe.com
+
 [+] Wrote exp.py (template: pkg:default.py.tpl)
 
 $ cat exp.py
@@ -81,34 +84,34 @@ $ cat exp.py
 # Usage:
 # ------
 # - Local mode  : python3 xpl.py
-# - Remote mode : python3 [ <IP> <PORT> | <IP:PORT> ]
+# - Remote mode : python3 [ <HOST> <PORT> | <HOST:PORT> ]
 #
 
 from pwnkit import *
 from pwn import *
 import sys
 
-BIN_PATH   = '/home/Axura/ctf/pwn/linux-user/evilcorp/evil-corp'
-LIBC_PATH  = '/home/Axura/ctf/pwn/linux-user/evilcorp/libc.so.6'
-host, port = parse_argv(sys.argv[1:], None, None)
+BIN_PATH   = './evil-corp'
+LIBC_PATH  = './libc.so.6'
+host, port = load_argv(sys.argv[1:])
 ssl  = False
 env  = {}
 elf  = ELF(BIN_PATH, checksec=False)
 libc = ELF(LIBC_PATH) if LIBC_PATH else None
 
 Context('amd64', 'linux', 'little', 'debug', ('tmux', 'splitw', '-h')).push()
-io = Config(BIN_PATH, LIBC_PATH, host, port, ssl, env).init()
+io = Config(BIN_PATH, LIBC_PATH, host, port, ssl, env).run()
 alias(io)   # s, sa, sl, sla, r, rl, ru, uu64, g, gp
 init_pr("debug", "%(asctime)s - %(levelname)s - %(message)s", "%H:%M:%S")
 
-def xpl():
+def exploit():
 
     # exploit chain here
 
     io.interactive()
 
 if __name__ == "__main__":
-    xpl()
+    exploit()
 ```
 List available built-in templates:
 ```bash
@@ -143,33 +146,28 @@ from pwn import *
 # - Loading (can be created by pwnkit cli)
 BIN_PATH   = './vuln'
 LIBC_PATH  = './libc.so.6'
+host, port = load_argv(sys.argv[1:])    # return None for local pwn
+ssl        = False                      # set True for SSL remote pwn
 elf        = ELF(BIN_PATH, checksec=False)
-libc       = ELF(LIBC_PATH) if LIBC_PATH else None
-host, port = parse_argv(sys.argv[1:], None, None)	
+libc       = ELF(LIBC_PATH) if LIBC_PATH else None	
 
-io = Tube(
+io = Config(
     file_path = BIN_PATH,
     libc_path = LIBC_PATH,
     host      = host,
     port      = port,
-    env       = {}
-).init()
+    ssl       = ssl,
+    env       = {},
+).run()
+
+# for IO
+io.sendlineafter(b'\n', 0xdeadbeef)
+io.sla(b'\n', 0xdeadbeef)
 
 # This enable alias for: s, sa, sl, sla, r, ru, uu64
-io.alias()
-"""
-[*] Example usage:
-io.sla(b'\n', 0xdeadbeef)
-"""
+alias(io)
 
-# This enables minimal shortcuts
-set_global_io(io) 
-"""
-[*] Example usage:
-ru(b'\n')
-payload = 0xdeadbeef
-s(payload)
-"""
+sla(b'\n', 0xdeadbeef)
 ```
 
 #### Context Initialization

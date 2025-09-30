@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import pytest
+import sys
 
 @pytest.fixture(autouse=True, scope="session")
 def silence_pwnlib_logging():
