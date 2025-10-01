@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Tuple, Union, Mapping
 from pwn import args, context, pack, unpack, error 
-from pwnkit.FILE import Key  
 
 """
 Naming:

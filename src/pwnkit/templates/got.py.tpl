@@ -40,7 +40,7 @@ init_pr("debug", "%(asctime)s - %(levelname)s - %(message)s", "%H:%M:%S")
 def create_ucontext(src: int, *, r8=0, r9=0, r12=0, r13=0, r14=0, r15=0,
                     rdi=0, rsi=0, rbp=0, rbx=0, rdx=0, rcx=0,
                     rsp=0, rip=0xdeadbeef) -> bytearray:
-    b = flat({
+    b = flat({{
         0x28: r8,
         0x30: r9,
         0x48: r12,
@@ -57,7 +57,7 @@ def create_ucontext(src: int, *, r8=0, r9=0, r12=0, r13=0, r14=0, r15=0,
         0xA8: rip,  # ret ptr
         0xE0: src,  # fldenv ptr
         0x1C0: 0x1F80,  # ldmxcsr
-    }, filler=b'\0', word_size=64)
+    }}, filler=b'\0', word_size=64)
     return b
 
 def setcontext32(libc: ELF, **kwargs) -> (int, bytes):

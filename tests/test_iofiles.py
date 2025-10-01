@@ -5,15 +5,7 @@ from typing import Tuple
 import pytest
 from pwn import context  # type: ignore
 
-# --- Import IOFilePlus from your package --------------------------------------
-# Adjust as needed. We try a few common layouts so the test runs out-of-the-box.
-try:
-    from pwnkit.FILE import IOFilePlus  # your current path
-except Exception:
-    try:
-        from pwnkit.iofile_plus import IOFilePlus  # alt name
-    except Exception:
-        from iofile_plus import IOFilePlus  # local module fallback
+from pwnkit.iofiles import IOFilePlus  
 
 
 # --- helpers ------------------------------------------------------------------

