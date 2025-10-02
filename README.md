@@ -494,7 +494,7 @@ ff = {
     "_freeres_buf":  0,                   # 0xb0
     "__pad5":        0,                   # 0xb8
     "_mode":         0,                   # 0xc0
-    "_unused2":      b"\x00"*0x14,        # 0xc4
+    "_unused2":      0,                   # 0xc4
 
     # pivot: fake vtable 
     "vtable":        0xdeadbeefcafebabe,  # 0xd8
