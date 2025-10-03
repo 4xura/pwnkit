@@ -310,7 +310,7 @@ class IOFilePlus:
         """Set numeric field (int or pointer) by field name or byte offset."""
         off, size, signed, _ = self._resolve(key)
         self.data[off:off+size] = pack(value,
-                                       word_size=size * 8,
+                                       word_size=size * self.ptr_size,
                                        endianness=context.endian,
                                        sign=signed)
         return self
@@ -319,7 +319,7 @@ class IOFilePlus:
         """Get numeric field by field name or byte offset."""
         off, size, signed, _ = self._resolve(key)
         return unpack(bytes(self.data[off:off+size]),
-                      word_size=size * 8,
+                      word_size=size * self.ptr_size,
                       endianness=context.endian,
                       sign=signed)
 
@@ -691,7 +691,7 @@ class BinaryStruct:
         """Set numeric field (int or pointer) by field name or byte offset."""
         off, size, signed, _ = self._resolve(key)
         self.data[off:off+size] = pack(value,
-                                       word_size=size * 8,
+                                       word_size=size * self.ptr_size,
                                        endianness=context.endian,
                                        sign=signed)
         return self
@@ -700,7 +700,7 @@ class BinaryStruct:
         """Get numeric field by field name or byte offset."""
         off, size, signed, _ = self._resolve(key)
         return unpack(bytes(self.data[off:off+size]),
-                      word_size=size * 8,
+                      word_size=size * self.ptr_size,
                       endianness=context.endian,
                       sign=signed)
 
