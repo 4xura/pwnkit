@@ -487,6 +487,8 @@ class IOFilePlus:
 
 # Generic struct (in development)
 # ---------------------------------------------------------------------------
+ARCHS = ("amd64", "i386", "arm", "aarch64")
+
 @dataclass
 class BinaryStruct:
     """Generic byte-mapped struct helper.
@@ -500,7 +502,7 @@ class BinaryStruct:
     _ptr_fields: Tuple[str] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
-        if self.arch not in Arch:
+        if self.arch not in ALLOWED_ARCHS:
             error(f"Unsupported arch '{self.arch}'")
         self.data = bytearray(self.size)
         self._ptr_fields = {name for _off, (name, spec) in self._map.items() if spec is PTR}
