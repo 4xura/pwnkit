@@ -40,7 +40,7 @@ def menu(n: int):
     pass
 
 @argx(by_type={{int:itoa}})
-def allo():
+def add():
     pass
 
 def free():
