@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from typing import Iterable
+from __future__ import annotations
+from typing import Iterable, List
 
 __all__ = [
 	"rc4",
     "rc4_encrypt", "rc4_decrypt",
 ]
 
-def _ksa(key: bytes) -> list[int]:
+def _ksa(key: bytes) -> List[int]:
     """
     Key-Scheduling Algorithm (KSA).
     Input: secret key bytes.
@@ -20,7 +21,7 @@ def _ksa(key: bytes) -> list[int]:
         S[i], S[j] = S[j], S[i]  # swap
     return S
 
-def _prga(S: list[int]) -> Iterable[int]:
+def _prga(S: List[int]) -> Iterable[int]:
     """
     Pseudo-Random Generation Algorithm (PRGA).
     Produces the keystream, one byte at a time.
