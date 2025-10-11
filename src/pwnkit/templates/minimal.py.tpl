@@ -13,8 +13,8 @@ env  = {{}}
 elf  = ELF(BIN_PATH, checksec=False)
 libc = ELF(LIBC_PATH) if LIBC_PATH else None
 
-Context({arch!r}, {os!r}, {endian!r}, {log!r}, {term!r}).run()
-io = Config(BIN_PATH, LIBC_PATH, host, port, ssl, env).init()
+Context({arch!r}, {os!r}, {endian!r}, {log!r}, {term!r}).push()
+io = Config(BIN_PATH, LIBC_PATH, host, port, ssl, env).run()
 alias(io)	# s, sa, sl, sla, r, rl, ru, uu64, g, gp
 
 def exploit(*args, **kwargs):

