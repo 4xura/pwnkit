@@ -45,7 +45,9 @@ if TYPE_CHECKING:
     from .encrypt import (
         PointerGuard, SafeLinking,
     )
-    from .rop import ROPGadgets
+    from .rop import (
+        ROPGadgets, sg,
+    )
     from .gdbx import ga
     from .utils import (
         b2hex, bytex, colorize, hex2b, i2a, init_pr, itoa, leak, load_argv, logger, pa, pd, pr_critical,

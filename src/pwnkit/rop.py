@@ -1,10 +1,11 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional, Iterable, Dict
-from pwn import ROP, ELF
+from pwn import ROP, ELF, asm, context
 
 __all__ = [
         "ROPGadgets",
+        "sg",
         ]
 
 @dataclass
@@ -62,3 +63,15 @@ class ROPGadgets:
                 addr_str = f"0x{addr:016x}"
             print(f"{name:<12} {addr_str}")
 
+def sg(elf: ELF, asm_str: str, *, arch: str | None = None, os: str | None = None) -> Optional[int]:
+    """
+    Search for the first occurrence of assembled `asm_str` in ELF `elf`.
+    Returns the address (int) if found, otherwise None.
+    """
+    arch = arch or context.arch
+    os = os or context.os
+
+    with context.local(arch=arch, os=os):
+        needle = asm(asm_str)
+
+    return next(elf.search(needle), None)
