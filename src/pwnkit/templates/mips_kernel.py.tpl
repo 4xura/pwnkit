@@ -26,7 +26,6 @@ elf  = ELF(BIN_PATH, checksec=False)
 libc = ELF(LIBC_PATH) if LIBC_PATH else None
 
 Context('mips', 'linux', 'little', {log!r}, {term!r}).push()
-init_pr("debug", "%(asctime)s - %(levelname)s - %(message)s", "%H:%M:%S")
 
 KERNEL = 'vmlinux'           # uncompressed vmlinux with symbols
 INITRD = 'rootfs.cpio.gz'    # optional

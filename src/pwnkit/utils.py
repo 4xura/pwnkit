@@ -2,14 +2,12 @@ from __future__ import annotations
 from pwn import success  
 from typing import Any, Literal, Optional, Tuple, Sequence, Union
 from urllib.parse import quote, quote_plus, unquote, urlencode
-import binascii, inspect, logging, sys, os
+import binascii, inspect, sys, os
 
 __all__ = [
         "print_addr", "leak", "pa",
         "print_data", "pd",
         "itoa", "i2a", "bytex", "hex2b", "b2hex", "url_qs",
-        "init_pr",
-        "logger", "pr_debug", "pr_info", "pr_warn", "pr_error", "pr_critical", "pr_exception",
         "load_argv",
         "colorize",
         ]
@@ -307,75 +305,6 @@ pa      = print_addr
 leak    = print_addr
 pd      = print_data
 
-# Logging
-# ------------------------------------------------------------------------
-class ColorFormatter(logging.Formatter):
-    COLORS = {
-        'DEBUG':    "\033[32m",     # Green
-        'INFO':     "\033[94m",     # blue
-        'WARNING':  "\033[33m",     # Yellow
-        'ERROR':    "\033[31m",     # Red
-        'CRITICAL': "\033[1;33;41m" # Bold yellow text red bg
-    }
-    RESET = "\033[0m"
-
-    def format(self, record):
-        orig = record.levelname
-        try:
-            color = self.COLORS.get(orig, self.RESET)
-            record.levelname = f"{color}{orig}{self.RESET}"
-            return super().format(record)
-        finally:
-            record.levelname = orig
-
-logger = logging.getLogger("pwnkit")
-
-def init_pr(
-    level: Literal["debug","info","warning","error","critical"] = "info",
-    fmt: str = "%(asctime)s - %(levelname)s - %(message)s",
-    datefmt: str = "%H:%M:%S",
-) -> None:
-    """
-    Initialize logging for the 'pwnkit' namespace.
-
-    - Configures only the 'pwnkit' logger (not root), so pwntools' own logging
-      remains intact.
-    - Installs a single StreamHandler with colored output.
-    - Allows switching level at runtime: "debug", "info", etc.
-    """
-    lvl = getattr(logging, level.upper(), logging.INFO)
-
-    logger.propagate = False    # avoids duplicate messages
-    logger.setLevel(lvl)
-    logger.handlers = [h for h in logger.handlers if not isinstance(h, logging.StreamHandler)]
-
-    h = logging.StreamHandler()
-    h.setFormatter(ColorFormatter(fmt=fmt, datefmt=datefmt))
-    h.setLevel(lvl)  # optional
-    logger.addHandler(h)
-
-    plog = logging.getLogger("pwnlib")  # Align pwntools' logging level
-    if lvl <= logging.DEBUG:
-        plog.setLevel(logging.DEBUG)
-    plog.propagate = False
-
-def pr_debug(msg):
-    logger.debug(msg)
-
-def pr_info(msg):
-    logger.info(msg)
-
-def pr_warn(msg):
-    logger.warning(msg)
-
-def pr_error(msg):
-    logger.error(msg)
-
-def pr_critical(msg):
-    logger.critical(msg)
-
-def pr_exception(msg):
-    logger.exception(msg)
 
 # Usage
 # ------------------------------------------------------------------------

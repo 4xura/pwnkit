@@ -27,7 +27,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Optional, Iterable, Union
 from string import printable
-from .utils import init_pr, pr_error, pr_exception
+from pwn import log
 import hashlib, itertools, time, threading, concurrent.futures as cf
 
 try:
@@ -42,8 +42,6 @@ __all__ = [
     "solve_pow",
     "solve_pow_mt",
 ]
-
-init_pr("debug", "%(asctime)s - %(levelname)s - %(message)s", "%H:%M:%S")
 
 Predicate = Callable[[str], bool]
 Chars = Union[bytes, str]
@@ -66,7 +64,7 @@ def _to_bytes(x: Chars, enc: str) -> bytes:
     return x.encode(enc, errors="strict")
 
 def _fail(msg: str) -> None:
-    pr_exception(msg)
+    log.exception(msg)
     raise ValueError(msg)
 
 def _validate(hash_algo: str, cfg: BruteForcer) -> None:
