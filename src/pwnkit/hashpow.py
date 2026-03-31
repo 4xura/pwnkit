@@ -64,7 +64,7 @@ def _to_bytes(x: Chars, enc: str) -> bytes:
     return x.encode(enc, errors="strict")
 
 def _fail(msg: str) -> None:
-    log.exception(msg)
+    log.warning(msg)
     raise ValueError(msg)
 
 def _validate(hash_algo: str, cfg: BruteForcer) -> None:
